@@ -8,6 +8,7 @@
         
         //Simple operations - can be added into single shaders
         MatrixDeclaration,
+        DiagonalMatrixDeclaration,
         VectorDeclaration,
         ConstantDeclaration,
         ConstantVectorDeclaration,
@@ -17,6 +18,7 @@
         
         Transpose,
         MatrixProduct,
+        ReverseMatrixProduct,
         TensorProduct,
         HadamardProduct,
 
@@ -24,5 +26,8 @@
         Subtract,
         Multiply,
         Divide,
+
+        Tanh,
+        Power,
     }
 }

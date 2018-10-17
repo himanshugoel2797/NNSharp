@@ -8,9 +8,10 @@
     <OutputType>Library</OutputType>
     <RootNamespace>NNSharp2</RootNamespace>
     <AssemblyName>NNSharp2</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -52,10 +53,10 @@
     <Compile Include="ComputationalGraph\Compiler\GraphCompiler.cs" />
     <Compile Include="ComputationalGraph\Compiler\MathTypeBase.cs" />
     <Compile Include="ComputationalGraph\Compiler\VariableDecl.cs" />
-    <Compile Include="ComputationalGraph\Node.cs" />
     <Compile Include="ComputationalGraph\NodeOperationType.cs" />
     <Compile Include="Device.cs" />
     <Compile Include="GraphContext.cs" />
+    <Compile Include="Math\Constant.cs" />
     <Compile Include="Math\Matrix.cs" />
     <Compile Include="Math\Vector.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

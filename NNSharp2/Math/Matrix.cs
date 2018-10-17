@@ -1,82 +1,66 @@
 ﻿using NNSharp2.ComputationalGraph;
+using NNSharp2.ComputationalGraph.Compiler;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SMath = System.Math;
 
 namespace NNSharp2.Math
 {
-    public class Matrix
+    public class Matrix : MathTypeBase
     {
-        internal Node node { get; private set; }
+        public int Width { get { return Dimensions[0]; } }
+        public int Height { get { return Dimensions[1]; } }
 
-        public int Width { get; private set; }
-        public int Height { get; private set; }
-
-        public Matrix(string varName, int w, int h) : this(varName, w, h, NodeOperationType.MatrixDeclaration) { }
-
-        public Matrix(int w, int h, double constVal)
+        public Matrix(string varName, int w, int h) : base(w, h, varName)
         {
-            Width = w;
-            Height = h;
-
-            node = new Node(NodeOperationType.ConstantMatrixDeclaration, constVal)
-            {
-                Dimension = new int[] { w, h }
-            };
+            Operation = NodeOperationType.MatrixDeclaration;
         }
 
-        internal Matrix(int w, int h, NodeOperationType operationType, params Node[] inputs)
+        public Matrix(int w, int h, double constVal) : base(w, h, constVal)
         {
-            Width = w;
-            Height = h;
-
-            node = new Node(operationType)
-            {
-                Dimension = new int[] { w, h }
-            };
-
-            node.IncomingEdges.AddRange(inputs);
-            for (int i = 0; i < inputs.Length; i++)
-                inputs[i].OutgoingEdges.Add(node);
+            Operation = NodeOperationType.ConstantMatrixDeclaration;
         }
 
-        internal Matrix(string varName, int w, int h, NodeOperationType operationType)
+        public static Matrix Diagonal(Vector vec)
         {
-            Width = w;
-            Height = h;
-
-            node = new Node(operationType, varName)
-            {
-                Dimension = new int[] { w, h }
-            };
+            int dim = SMath.Max(vec.Width, vec.Height);
+            return new Matrix(dim, dim, NodeOperationType.DiagonalMatrixDeclaration, vec);
         }
 
-        internal Matrix(Node n)
-        {
-            node = n;
-            Width = n.Dimension[0];
-            Height = n.Dimension[1];
-        }
+        internal Matrix(int w, int h, NodeOperationType op, params MathTypeBase[] param) : base(w, h, op, param) { }
 
-        public Matrix Gradient(Matrix wrt)
-        {
-            //Building the gradient tree here, rather than waiting for the compiler
-            //Find gradients of all incoming paths
-            var m = new Matrix(node.Gradient(wrt.node));
-            return m;
-        }
-
+        #region Matrix Multiplication Operators
         public static Matrix operator *(Matrix a, Matrix b)
         {
             if (a.Width != b.Height)
                 throw new ArgumentException();
 
-            return new Matrix(b.Width, a.Height, NodeOperationType.Multiply, a.node, b.node);
+            if (a.Operation == NodeOperationType.DiagonalMatrixDeclaration && b.Operation == NodeOperationType.DiagonalMatrixDeclaration)
+                return new Matrix(b.Width, a.Height, NodeOperationType.DiagonalMatrixDeclaration, Vector.Hadamard((a.Operands[0] as Vector), (b.Operands[0] as Vector)));
+
+            if (a.Operation == NodeOperationType.DiagonalMatrixDeclaration && a.Operands[0].Operation == NodeOperationType.ConstantVectorDeclaration && a.Operands[0].OpValues[0] == 1)
+                return b;
+
+            if (b.Operation == NodeOperationType.DiagonalMatrixDeclaration && b.Operands[0].Operation == NodeOperationType.ConstantVectorDeclaration && b.Operands[0].OpValues[0] == 1)
+                return a;
+
+            return new Matrix(b.Width, a.Height, NodeOperationType.MatrixProduct, a, b);
         }
 
-        public static Matrix operator /(Matrix b, Matrix a)
+        public static Vector operator *(Matrix a, Vector b)
+        {
+            if (a.Width != b.Height)
+                throw new ArgumentException();
+
+            return new Vector(b.Width, a.Height, NodeOperationType.MatrixProduct, a, b);
+        }
+        #endregion
+
+        #region Elementwise Operators
+        public static Matrix Hadamard(Matrix a, Matrix b)
         {
             if (a.Width != b.Width)
                 throw new ArgumentException();
@@ -84,18 +68,7 @@ namespace NNSharp2.Math
             if (a.Height != b.Height)
                 throw new ArgumentException();
 
-            return new Matrix(a.Width, a.Height, NodeOperationType.Divide, b.node, a.node);
-        }
-
-        public static Matrix operator -(Matrix a, Matrix b)
-        {
-            if (a.Width != b.Width)
-                throw new ArgumentException();
-
-            if (a.Height != b.Height)
-                throw new ArgumentException();
-
-            return new Matrix(a.Width, a.Height, NodeOperationType.Subtract, a.node, b.node);
+            return new Matrix(a.Width, a.Height, NodeOperationType.HadamardProduct, a, b);
         }
 
         public static Matrix operator +(Matrix a, Matrix b)
@@ -106,10 +79,10 @@ namespace NNSharp2.Math
             if (a.Height != b.Height)
                 throw new ArgumentException();
 
-            return new Matrix(a.Width, a.Height, NodeOperationType.Add, a.node, b.node);
+            return new Matrix(a.Width, a.Height, NodeOperationType.Add, a, b);
         }
 
-        public static Matrix Hadamard(Matrix a, Matrix b)
+        public static Matrix operator -(Matrix a, Matrix b)
         {
             if (a.Width != b.Width)
                 throw new ArgumentException();
@@ -117,8 +90,19 @@ namespace NNSharp2.Math
             if (a.Height != b.Height)
                 throw new ArgumentException();
 
-            return new Matrix(a.Width, a.Height, NodeOperationType.Hadamard, a.node, b.node);
+            return new Matrix(a.Width, a.Height, NodeOperationType.Subtract, a, b);
         }
+
+        public static Matrix Tanh(Matrix a)
+        {
+            return new Matrix(a.Width, a.Height, NodeOperationType.Tanh, a);
+        }
+
+        public static Matrix Power(Matrix a, double pwr)
+        {
+            return new Matrix(a.Width, a.Height, NodeOperationType.Power, a, new Constant(pwr));
+        }
+        #endregion
 
         #region Constant Multiply
         public static Matrix operator *(double b, Matrix a)
@@ -130,6 +114,68 @@ namespace NNSharp2.Math
         {
             return Matrix.Hadamard(a, new Matrix(a.Width, a.Height, b));
             //return new Matrix(NodeOperationType.Multiply, a.node, new Node(NodeOperationType.ConstantDeclaration, b));
+        }
+        #endregion
+
+        #region Gradient Operators
+        protected override MathTypeBase CurGradient(MathTypeBase wrt)
+        {
+            switch (Operation)
+            {
+                case NodeOperationType.MatrixDeclaration:
+                    break;
+                case NodeOperationType.VectorDeclaration:
+                    break;
+                case NodeOperationType.ConstantDeclaration:
+                    break;
+                case NodeOperationType.ConstantVectorDeclaration:
+                    break;
+                case NodeOperationType.ConstantMatrixDeclaration:
+                    break;
+                case NodeOperationType.Transpose:
+                    break;
+                case NodeOperationType.MatrixProduct:
+                    break;
+                case NodeOperationType.TensorProduct:
+                    break;
+                case NodeOperationType.HadamardProduct:
+                    break;
+                case NodeOperationType.Add:
+                    break;
+                case NodeOperationType.Subtract:
+                    break;
+                case NodeOperationType.Multiply:
+                    break;
+                case NodeOperationType.Divide:
+                    break;
+                case NodeOperationType.Gradient:
+                case NodeOperationType.Assignment:
+                default:
+                    throw new Exception("Unexpected operation.");
+                    break;
+            }
+            return null;
+        }
+        #endregion
+
+        #region Operators
+        public override MathTypeBase Multiply(MathTypeBase b)
+        {
+            if (b is Matrix)
+                return this * (b as Matrix);
+
+            if (b is Vector)
+                return this * (b as Vector);
+
+            throw new Exception();
+        }
+
+        public override MathTypeBase Add(MathTypeBase b)
+        {
+            if (b is Matrix)
+                return this + (b as Matrix);
+
+            throw new Exception();
         }
         #endregion
 
@@ -171,7 +217,7 @@ namespace NNSharp2.Math
         }
         #endregion
         */
-
+        /*
         public static Matrix Power(Matrix a, double pwr)
         {
             return new Matrix(a.Width, a.Height, NodeOperationType.Power, a.node, new Node(NodeOperationType.ConstantDeclaration, pwr));
@@ -190,11 +236,11 @@ namespace NNSharp2.Math
         public static Matrix Exp(Matrix a)
         {
             return new Matrix(a.Width, a.Height, NodeOperationType.Exp, a.node);
-        }
+        }*/
 
         public Matrix Transpose()
         {
-            return new Matrix(Height, Width, NodeOperationType.Transpose, node);
+            return new Matrix(Height, Width, NodeOperationType.Transpose, this);
         }
 
     }

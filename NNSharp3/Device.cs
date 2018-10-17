@@ -1,5 +1,4 @@
-﻿using NNSharp2.ComputationalGraph.Compiler;
-using NNSharp2.Math;
+﻿using NNSharp3.Math;
 using OpenGL;
 using System;
 using System.Collections.Generic;
@@ -7,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NNSharp2
+namespace NNSharp3
 {
     public class Device
     {
@@ -15,7 +14,7 @@ namespace NNSharp2
         private IntPtr ctx;
 
         private static Device device;
-        internal static Device GetDevice()
+        public static Device GetDevice()
         {
             if (device == null)
                 device = new Device();
@@ -23,31 +22,7 @@ namespace NNSharp2
             return device;
         }
 
-        public static MathTypeBase Add(string varName, MathTypeBase val)
-        {
-            MathTypeBase b = null;
-            if (val is Matrix)
-                b = new Matrix(varName, val.Dimensions[0], val.Dimensions[1]);
-            else if (val is Vector)
-                b = new Vector(varName, val.Dimensions[0], val.Dimensions[1]);
-            else
-                throw new Exception();
-
-            GraphCompiler.Add(b, val);
-            return b;
-        }
-
-        public static void Add(MathTypeBase outputVariable, MathTypeBase val)
-        {
-            GraphCompiler.Add(outputVariable, val);
-        }
-
-        public static void Build()
-        {
-            GraphCompiler.Build();
-        }
-
-        public Device()
+        Device()
         {
             deviceContext = DeviceContext.Create();
             ctx = deviceContext.CreateContext(IntPtr.Zero);
@@ -75,8 +50,8 @@ Compute Info:
     Max Dimensions: {workgrp_cnt_x}, {workgrp_cnt_y}, {workgrp_cnt_z}
 
 Memory Limits:
-    Max Shader Buffer Size: {max_block_sz}
-    Max Texture Buffer Size: {tex_buf_sz}";
+    Max Shader Buffer Size: {max_block_sz / (1024.0f * 1024.0f)} MiB
+    Max Texture Buffer Size: {tex_buf_sz / (1024.0f * 1024.0f)} MiB";
 
             Console.WriteLine(gl_info);
         }
