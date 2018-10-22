@@ -89,79 +89,6 @@ namespace NNSharp.ANN
             var networkVolume = new Vector[LayerCount + 1];
             networkVolume[0] = input;
 
-            for (int i = 0; i < LayerCount; i++)
-            {
-                networkVolume[i + 1] = layers[i].Forward(networkVolume[i]);
-            }
-
-            var y_hat = networkVolume.Last();
-            var y = expectedOutput;
-
-            if (cost_deriv == null)
-                cost_deriv = new Vector(y.Length, MemoryFlags.ReadWrite, false);
-
-            loss.LossDeriv(y_hat, y, cost_deriv);
-
-            var prev_delta = cost_deriv;
-            Matrix prev_w = null;
-            for (int i = LayerCount - 1; i >= 0; i--)
-            {
-                layers[i].Learn(networkVolume[i], prev_delta, prev_w, out prev_delta, out prev_w);
-            }
-        }
-
-        public void TrainMultiple(Vector[] input, Vector[] expectedOutput)
-        {
-            Vector[] cost_derivs = new Vector[input.Length];
-
-            if (cost_deriv != null) cost_deriv.Dispose();
-            cost_deriv = new Vector(expectedOutput[0].Length, MemoryFlags.ReadWrite, true);
-
-            for (int q = 0; q < input.Length; q++)
-            {
-                var networkVolume = new Vector[LayerCount + 1];
-                networkVolume[0] = input[q];
-
-                for (int i = 0; i < LayerCount; i++)
-                {
-                    networkVolume[i + 1] = layers[i].Forward(networkVolume[i]);
-                }
-
-                var y_hat = networkVolume.Last();
-                var y = expectedOutput[q];
-
-                if (cost_derivs[q] == null)
-                    cost_derivs[q] = new Vector(y.Length, MemoryFlags.ReadWrite, false);
-
-                loss.LossDeriv(y_hat, y, cost_derivs[q]);
-
-                Vector.Add(cost_derivs[q], cost_deriv);
-            }
-            Vector.Divide(input.Length, cost_deriv);
-
-            for (int q = 0; q < input.Length; q++)
-            {
-                var networkVolume = new Vector[LayerCount + 1];
-                networkVolume[0] = input[q];
-
-                for (int i = 0; i < LayerCount; i++)
-                {
-                    networkVolume[i + 1] = layers[i].Forward(networkVolume[i]);
-                }
-
-                var prev_delta = cost_deriv;
-                Matrix prev_w = null;
-                for (int i = LayerCount - 1; i >= 0; i--)
-                {
-                    layers[i].Learn(networkVolume[i], prev_delta, prev_w, out prev_delta, out prev_w);
-                }
-            }
-        }
-
-        public void OutputError(Vector input, Vector expectedOutput, out Vector delta, out Matrix weights)
-        {
-            var networkVolume = new Vector[LayerCount + 1];
-            networkVolume[0] = input;
 
             for (int i = 0; i < LayerCount; i++)
             {
@@ -180,11 +107,13 @@ namespace NNSharp.ANN
             Matrix prev_w = null;
             for (int i = LayerCount - 1; i >= 0; i--)
             {
-                layers[i].Learn(networkVolume[i], prev_delta, prev_w, out prev_delta, out prev_w);
+                layers[i].Error(networkVolume[i], prev_delta, prev_w, out prev_delta, out prev_w);
             }
 
-            delta = prev_delta;
-            weights = prev_w;
+            for (int i = 0; i < LayerCount; i++)
+            {
+                layers[i].Learn();
+            }
         }
 
         public Vector Forward(Vector input)
@@ -207,38 +136,21 @@ namespace NNSharp.ANN
             return null;
         }
 
-        public void Learn(Vector input, Vector prev_delta, Matrix prev_w, out Vector cur_delta, out Matrix cur_w)
+        public void Learn()
         {
-            var networkVolume = new Vector[LayerCount + 1];
-            networkVolume[0] = input;
-
             for (int i = 0; i < LayerCount; i++)
             {
-                networkVolume[i + 1] = layers[i].Forward(networkVolume[i]);
+                layers[i].Learn();
             }
-
-            for (int i = LayerCount - 1; i >= 0; i--)
-            {
-                layers[i].Learn(networkVolume[i], prev_delta, prev_w, out prev_delta, out prev_w);
-            }
-            cur_delta = prev_delta;
-            cur_w = prev_w;
         }
 
         public void Error(Vector input, Vector prev_delta, Matrix prev_w, out Vector cur_delta, out Matrix cur_w)
         {
-            var networkVolume = new Vector[LayerCount + 1];
-            networkVolume[0] = input;
-
-            for (int i = 0; i < LayerCount; i++)
-            {
-                networkVolume[i + 1] = layers[i].Forward(networkVolume[i]);
-            }
-
             for (int i = LayerCount - 1; i >= 0; i--)
             {
-                layers[i].Error(networkVolume[i], prev_delta, prev_w, out prev_delta, out prev_w);
+                layers[i].Error(null, prev_delta, prev_w, out prev_delta, out prev_w);
             }
+
             cur_delta = prev_delta;
             cur_w = prev_w;
         }

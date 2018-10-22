@@ -42,16 +42,20 @@ namespace NNSharp3
             Gl.Get(Gl.MAX_COMPUTE_WORK_GROUP_COUNT, 1, out int workgrp_cnt_y);
             Gl.Get(Gl.MAX_COMPUTE_WORK_GROUP_COUNT, 2, out int workgrp_cnt_z);
 
+            Gl.Get(Gl.MAX_TEXTURE_SIZE, out int tex_size);
+
             string gl_info =
 $@"Renderer: {Gl.CurrentRenderer}
 Version: {Gl.CurrentVersion}
 Compute Info:
     Max Compute Work Group Invocations: {compute_workgrp_invocations}
     Max Dimensions: {workgrp_cnt_x}, {workgrp_cnt_y}, {workgrp_cnt_z}
+    Max Texture Size: {tex_size}
 
 Memory Limits:
     Max Shader Buffer Size: {max_block_sz / (1024.0f * 1024.0f)} MiB
-    Max Texture Buffer Size: {tex_buf_sz / (1024.0f * 1024.0f)} MiB";
+    Max Texture Buffer Size: {tex_buf_sz / (1024.0f * 1024.0f)} MiB
+";
 
             Console.WriteLine(gl_info);
         }

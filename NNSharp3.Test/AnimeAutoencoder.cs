@@ -1,13 +1,16 @@
-﻿using NNSharp3.AGNN;
+﻿using NNSharp3.ANN;
+using NNSharp3.Math;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Drawing2D;
+//using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
+using SMath = System.Math;
 
 namespace NNSharp3.Test
 {
@@ -17,9 +20,9 @@ namespace NNSharp3.Test
         NeuralNetwork decoder;
         NeuralNetwork combined;
 
-        const int Side = 64;
+        const int Side = 32;
         const int InputSize = Side * Side * 3;
-        const int LatentSize = 32 * 3;
+        const int LatentSize = 16 * 3;
         const int BatchSize = 64;
 
         const string TrainingDataPath = @"I:\Datasets\Lewds\Pictures";
@@ -30,11 +33,17 @@ namespace NNSharp3.Test
         {
             encoder = new NeuralNetworkBuilder(InputSize)
                                 .SetLossFunction(LossFunction.MeanSquaredError)
-                                .AddFCLayer(LatentSize, ActivationFunction.Sigmoid)
+                                .SetWeightInitializer(WeightInitializer.UniformNoise, 0, 1, 0.0001f)
+                                //.SetOptimizer()
+                                .AddFCLayer(LatentSize, ActivationFunction.ReLU)
+                                //.AddFCLayer(LatentSize, ActivationFunction.ReLU)
+                                //.AddFCLayer(LatentSize, ActivationFunction.ReLU)
                                 .Build();
 
             decoder = new NeuralNetworkBuilder(LatentSize)
                                 .SetLossFunction(LossFunction.MeanSquaredError)
+                                .SetWeightInitializer(WeightInitializer.UniformNoise, 0, 1, 0.0001f)
+                                //.SetOptimizer()
                                 .AddFCLayer(InputSize, ActivationFunction.Sigmoid)
                                 .Build();
 
@@ -49,7 +58,7 @@ namespace NNSharp3.Test
 
             for (int i = 0; i < decoder.LayerCount; i++)
                 decoder.SetOptimizer(nSGD);
-                */
+                */ 
             combined = new NeuralNetworkBuilder(InputSize)
                                 .Add(encoder)
                                 .Add(decoder)
@@ -73,15 +82,15 @@ namespace NNSharp3.Test
 
             using (var graphics = Graphics.FromImage(destImage))
             {
-                graphics.CompositingMode = CompositingMode.SourceCopy;
-                graphics.CompositingQuality = CompositingQuality.HighQuality;
-                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                graphics.SmoothingMode = SmoothingMode.HighQuality;
-                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
 
                 using (var wrapMode = new ImageAttributes())
                 {
-                    wrapMode.SetWrapMode(WrapMode.TileFlipXY);
+                    wrapMode.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
                     graphics.DrawImage(image, destRect, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, wrapMode);
                 }
             }
@@ -103,15 +112,15 @@ namespace NNSharp3.Test
                 {
                     using (var graphics = Graphics.FromImage(destImage))
                     {
-                        graphics.CompositingMode = CompositingMode.SourceCopy;
-                        graphics.CompositingQuality = CompositingQuality.HighQuality;
-                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                        graphics.SmoothingMode = SmoothingMode.HighQuality;
-                        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                        graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                        graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                        graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                        graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
 
                         using (var wrapMode = new ImageAttributes())
                         {
-                            wrapMode.SetWrapMode(WrapMode.Clamp);
+                            wrapMode.SetWrapMode(System.Drawing.Drawing2D.WrapMode.Clamp);
                             //wrapMode.
                             graphics.DrawImage(image, destRect, x, y, width, height, GraphicsUnit.Pixel, wrapMode);
                         }
@@ -231,14 +240,14 @@ namespace NNSharp3.Test
             for (int h = 0; h < bmp.Height; h++)
                 for (int w = 0; w < bmp.Width; w++)
                 {
-                    if (img[i] < 0) img[i] = System.Math.Abs(img[i]);
-                    if (img[i + 1] < 0) img[i + 1] = System.Math.Abs(img[i + 1]);
-                    if (img[i + 2] < 0) img[i + 2] = System.Math.Abs(img[i + 2]);
+                    if (img[i] < 0) img[i] = SMath.Abs(img[i]);
+                    if (img[i + 1] < 0) img[i + 1] = SMath.Abs(img[i + 1]);
+                    if (img[i + 2] < 0) img[i + 2] = SMath.Abs(img[i + 2]);
 
                     if (img[i] > 1) img[i] = 1;
                     if (img[i + 1] > 1) img[i + 1] = 1;
                     if (img[i + 2] > 1) img[i + 2] = 1;
-
+                     
                     bmp.SetPixel(w, h, Color.FromArgb((int)(img[i++] * 255.0f), (int)(img[i++] * 255.0f), (int)(img[i++] * 255.0f)));
                 }
 
@@ -254,9 +263,9 @@ namespace NNSharp3.Test
             for (int h = 0; h < bmp.Height; h++)
                 for (int w = 0; w < bmp.Width; w++)
                 {
-                    if (img[i] < 0) img[i] = System.Math.Abs(img[i]);
-                    if (img[i + 1] < 0) img[i + 1] = System.Math.Abs(img[i + 1]);
-                    if (img[i + 2] < 0) img[i + 2] = System.Math.Abs(img[i + 2]);
+                    if (img[i] < 0) img[i] = SMath.Abs(img[i]);
+                    if (img[i + 1] < 0) img[i + 1] = SMath.Abs(img[i + 1]);
+                    if (img[i + 2] < 0) img[i + 2] = SMath.Abs(img[i + 2]);
 
                     if (img[i] > 1) img[i] = 1;
                     if (img[i + 1] > 1) img[i + 1] = 1;
@@ -287,15 +296,17 @@ namespace NNSharp3.Test
             res2 = new float[InputSize];
             data = new float[LatentSize];
 
-            
+            Matrix data_vec = new Matrix(1, LatentSize);
+
+            var dataset_vec = new Matrix[TrainingFiles.Count];
             float[][] dataset = new float[TrainingFiles.Count][];
             for (int i = 0; i < TrainingFiles.Count; i++)
             {
                 dataset[i] = new float[InputSize];
+                dataset_vec[i] = new Matrix(1, InputSize);
                 LoadImage(TrainingFiles[i], dataset[i]);
+                dataset_vec[i].Write(dataset[i]);
             }
-
-            GeneticTrainer geneticTrainer = new GeneticTrainer(combined, 0, 35);
 
             for (int i0 = 000; i0 < 25000; i0++)
             {
@@ -305,10 +316,13 @@ namespace NNSharp3.Test
                     //decoder.Save($@"Data\decoder{i0}.bin");
                     //combined.Save($@"Data\combined{i0}.bin");
                 }
-
+                 
+                //(var weights, var rows, var cols) = combined.State(0, NeuralNetwork.StateValue.Weights);
+                  
                 {
                     int idx = (r.Next() % (TrainingFiles.Count / 2));
-                    res1 = combined.Forward(dataset[idx]);
+                    var res_vec = combined.Forward(dataset_vec[idx]);
+                    res_vec.Read(res1);
                     SaveImage($@"Data\DiffTest\{i0}.png", dataset[idx]);
                     SaveImage($@"Data\Results\{i0}.png", res1);
 
@@ -318,14 +332,24 @@ namespace NNSharp3.Test
                 {
                     for (int i = 0; i < data.Length; i++)
                         data[i] = (float)(-r2.NextDouble() * 1.5f);
-                    
-                    res2 = decoder.Forward(data);
+                    data_vec.Write(data);
+
+                    var res_vec = decoder.Forward(data_vec);
+                    //res_vec = combined.Forward(res_vec);
+                    res_vec.Read(res2); 
                     SaveImage($@"Data\DecResults\{i0}.png", res2);
 
                     Console.WriteLine($"SAVE [{i0}] DECODER");
                 }
 
-                geneticTrainer.Train(dataset, dataset, BatchSize, 20, 5, 2, 0.6f, 0.005f, 50);
+
+                for (int i = 0; i < BatchSize; i++)
+                {
+                    int idx = (r.Next() % TrainingFiles.Count / 2) + TrainingFiles.Count / 2;
+                    combined.Forward(dataset_vec[idx]);
+                    combined.Backward(dataset_vec[idx]);
+                    combined.UpdateWeights(dataset_vec[idx], 0.001f);
+                }
 
                 Console.WriteLine($"[{i0}]");
             }

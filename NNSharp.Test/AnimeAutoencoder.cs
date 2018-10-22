@@ -21,9 +21,9 @@ namespace NNSharp.Test
         NeuralNetwork decoder;
         NeuralNetwork combined;
 
-        const int Side = 128;
+        const int Side = 32;
         const int InputSize = Side * Side * 3;
-        const int LatentSize = 128 * 3;
+        const int LatentSize = 256;
         const int BatchSize = 64;
 
         const string TrainingDataPath = @"I:\Datasets\Lewds\Pictures";
@@ -34,15 +34,16 @@ namespace NNSharp.Test
         {
             encoder = new NeuralNetworkBuilder(InputSize)
                                 .LossFunction<Quadratic>()
-                                .WeightInitializer(new UniformWeightInitializer(0, 0.0001f))
-                                .Optimizer(new SGD(), 0.00001f)
-                                .AddFC<ReLU>(LatentSize)
+                                .WeightInitializer(new UniformWeightInitializer(0, 0.000f))
+                                .Optimizer(new SGD(), 0.001f / BatchSize)
+                                .AddFC<Tanh>(LatentSize)
+                                .AddFC<Tanh>(LatentSize)
                                 .Build();
 
             decoder = new NeuralNetworkBuilder(LatentSize)
                                 .LossFunction<Quadratic>()
-                                .WeightInitializer(new UniformWeightInitializer(0, 0.0001f))
-                                .Optimizer(new SGD(), 0.00001f)
+                                .WeightInitializer(new UniformWeightInitializer(0, 0.000f))
+                                .Optimizer(new SGD(), 0.001f / BatchSize)
                                 .AddFC<Sigmoid>(InputSize)
                                 .Build();
 
@@ -144,7 +145,7 @@ namespace NNSharp.Test
             Directory.CreateDirectory(TrainingDataPath_SMALL);
 
             var files = Directory.EnumerateFiles(TrainingDataPath).ToArray();
-            for (int i = 0; i < files.Length; i++)
+            Parallel.For(0, files.Length, (i) =>
             {
                 if (new string[] { ".png", ".jpg" }.Contains(Path.GetExtension(files[i])))
                 {
@@ -162,13 +163,13 @@ namespace NNSharp.Test
                         bmp.Dispose();
                     }
                 }
-            }
+            });
 
             if (TrainingFiles.Count == 0)
             {
                 Random rng = new Random();
                 TrainingFiles.AddRange(Directory.EnumerateFiles(TrainingDataPath_SMALL));
-                while (TrainingFiles.Count > 1000)
+                while (TrainingFiles.Count > 1500)
                 {
                     TrainingFiles.RemoveAt(rng.Next() % TrainingFiles.Count);
                 }
@@ -310,7 +311,7 @@ namespace NNSharp.Test
                 dataset_vec[i].Write(dataset[i]);
             }
 
-            for (int i0 = 000; i0 < 25000; i0++)
+            for (int i0 = 000; i0 < 15000; i0++)
             {
                 if (i0 % 1000 == 0)
                 {
@@ -342,12 +343,14 @@ namespace NNSharp.Test
                     Console.WriteLine($"SAVE [{i0}] DECODER");
                 }
 
-
+                //var batch = new Vector[BatchSize];
                 for (int i = 0; i < BatchSize; i++)
                 {
                     int idx = (r.Next() % TrainingFiles.Count / 2) + TrainingFiles.Count / 2;
+                    //batch[i] = dataset_vec[idx];
                     combined.TrainSingle(dataset_vec[idx], dataset_vec[idx]);
                 }
+                //combined.TrainMultiple(batch, batch);
 
                 Console.WriteLine($"[{i0}]");
             }

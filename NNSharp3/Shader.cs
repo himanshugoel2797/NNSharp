@@ -12,11 +12,21 @@ namespace NNSharp3
     {
         private uint program;
         private Dictionary<string, uint> parameterIdx;
+        private string name = "";
+#if F16
+        const string f_mode = "r16f";
+        const string f_single = "float16_t";
+        const string f_vec4 = "f16vec4";
+#else
+        const string f_mode = "r32f";
+        const string f_single = "float";
+        const string f_vec4 = "vec4";
+#endif
 
         public Shader(string code)
         {
             uint shader = Gl.CreateShader(ShaderType.ComputeShader);
-            Gl.ShaderSource(shader, new string[] { "#version 450 core\n#extension GL_ARB_bindless_texture : require\n#define IMG_FMT rgba16f\n#extension GL_AMD_gpu_shader_half_float : require\n#define FLOAT_T float16_t\n#define FLOAT4_T f16vec4\n" + code });
+            Gl.ShaderSource(shader, new string[] { $"#version 450 core\n#extension GL_ARB_bindless_texture : require\n#define IMG_FMT {f_mode}\n#extension GL_AMD_gpu_shader_half_float : require\n#define FLOAT_T {f_single}\n#define FLOAT4_T {f_vec4}\n" + code });
             Gl.CompileShader(shader);
 
             Gl.GetShader(shader, ShaderParameterName.CompileStatus, out int res);
@@ -24,7 +34,7 @@ namespace NNSharp3
             {
                 StringBuilder builder = new StringBuilder(10000);
                 Gl.GetShaderInfoLog(shader, 10000, out var len, builder);
-                Gl.DeleteShader(shader); 
+                Gl.DeleteShader(shader);
 
                 throw new Exception(builder.ToString());
             }
@@ -54,12 +64,16 @@ namespace NNSharp3
             for (int i = 0; i < defines.Length; i++) src += defines[i] + "\n";
             src += File.ReadAllText(Path.Combine("Shaders", filename));
 
-            return new Shader(src);
+            return new Shader(src)
+            {
+                name = filename
+            };
         }
 
         public Shader Set(string parameter, float val)
         {
-            Gl.ProgramUniform1(program, (int)Gl.GetProgramResourceLocation(program, ProgramInterface.Uniform, parameter), val);
+            int idx = Gl.GetProgramResourceLocation(program, ProgramInterface.Uniform, parameter);
+            if (idx >= 0) Gl.ProgramUniform1(program, idx, val);
             return this;
         }
 
@@ -75,25 +89,29 @@ namespace NNSharp3
             else
                 throw new ArgumentException();
 
-            if (val.imgHandle == 0)
+            //if (val.imgHandle == 0)
             {
-                val.imgHandle = Gl.GetImageHandleARB(val.texID, 0, false, 0, (PixelFormat)InternalFormat.Rgba16f);
-
-                var err = Gl.GetError();
-                if (err != ErrorCode.NoError) throw new Exception();
-                Gl.MakeImageHandleResidentARB(val.imgHandle, rw);
-
-                err = Gl.GetError();
-                if (err != ErrorCode.NoError) throw new Exception();
+                val.imgHandle = Gl.GetImageHandleARB(val.texID, 0, false, 0, (PixelFormat)Texture.internalFormat);
             }
-            Gl.ProgramUniformHandleARB(program, (int)Gl.GetProgramResourceLocation(program, ProgramInterface.Uniform, parameter), val.imgHandle);
+
+            var err = Gl.GetError();
+            if (err != ErrorCode.NoError) throw new Exception();
+            Gl.MakeImageHandleResidentARB(val.imgHandle, rw);
+
+            err = Gl.GetError();
+            int idx = Gl.GetProgramResourceLocation(program, ProgramInterface.Uniform, parameter);
+            if (idx >= 0) Gl.ProgramUniformHandleARB(program, idx, val.imgHandle);
             return this;
         }
 
         public void Dispatch(uint x, uint y, uint z)
         {
+            Gl.MemoryBarrier(MemoryBarrierMask.AllBarrierBits);
             Gl.UseProgram(program);
+            var t = DateTime.Now;
             Gl.DispatchCompute(x, y, z);
+            Console.WriteLine(name + " = " + DateTime.Now.Subtract(t).Seconds);
+            Gl.MemoryBarrier(MemoryBarrierMask.AllBarrierBits);
         }
 
         #region IDisposable Support

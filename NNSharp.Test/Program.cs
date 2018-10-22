@@ -103,17 +103,59 @@ namespace NNSharp.Test
                 Console.WriteLine("Score: " + (float)score / cnt * 2);
             }*/
 
-            Vector a = new Vector(10, MemoryFlags.ReadWrite, false);
+            /*Vector a = new Vector(M, MemoryFlags.ReadOnly, false);
+            Vector b = new Vector(N, MemoryFlags.ReadOnly, false);
+            Matrix c = new Matrix(N, M, MemoryFlags.WriteOnly, false);
+            Random rng = new Random(0);
+
             float[] a_data = new float[a.Length];
-            Vector b = new Vector(10, MemoryFlags.ReadWrite, false);
             float[] b_data = new float[b.Length];
+            float[] c_data = new float[c.Width * c.Height];
+            float[] c_data_gpu = new float[c.Width * c.Height];
 
-            Vector res = new Vector(10, MemoryFlags.ReadWrite, true);
+            for (int i = 0; i < a_data.Length; i++)
+                a_data[i] = (float)rng.NextDouble();
+
+            for (int i = 0; i < b_data.Length; i++)
+                b_data[i] = (float)rng.NextDouble();
+
             a.Write(a_data);
-
             b.Write(b_data);
+            Matrix.MatrixProduct(a, b, c);
+            c.Read(c_data_gpu);
 
+            for (int i = 0; i < N; i++)
+            {
+                for (int j = 0; j < M; j++)
+                    c_data[i * M + j] = a_data[j] * b_data[i];
+            }
 
+            var fstream = File.Open("log.txt", FileMode.Create);
+            var fwriter = new StreamWriter(fstream);
+
+            for (int m = 0; m < M; m++)
+            {
+                for (int n = 0; n < N; n++)
+                    fwriter.Write("\t" + c_data[n * M + m] + "\t");
+                fwriter.WriteLine();
+            }
+
+            fwriter.WriteLine();
+            for (int m = 0; m < M; m++)
+            {
+                for (int n = 0; n < N; n++)
+                    fwriter.Write("\t" + c_data_gpu[n * M + m] + "\t");
+                fwriter.WriteLine();
+            }
+
+            fwriter.Flush();
+            fwriter.Close();
+
+            for (int w = 0; w < c_data.Length; w++)
+                if (Math.Abs(c_data[w] - c_data_gpu[w]) / ((c_data[w] + c_data_gpu[w]) * 0.5f) > 0.005f)
+                    throw new Exception();
+
+            Console.ReadLine();
             /*while (true)
             {
                 Vector.Hadamard(a, b, res);

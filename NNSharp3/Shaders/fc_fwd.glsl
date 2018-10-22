@@ -1,12 +1,12 @@
 ﻿layout(local_size_x = X, local_size_y = Y, local_size_z = Z) in;
 
-layout(IMG_FMT, bindless_image) uniform readonly image2D w;
-layout(IMG_FMT, bindless_image) uniform readonly image2D b;
+layout(IMG_FMT, bindless_image) uniform restrict readonly imageBuffer w;
+layout(IMG_FMT, bindless_image) uniform restrict readonly imageBuffer i; 
+layout(IMG_FMT, bindless_image) uniform restrict readonly imageBuffer b;
 
-layout(IMG_FMT, bindless_image) uniform readonly image2D i; 
 
-layout(bindless_image) uniform writeonly image2D o;
-layout(bindless_image) uniform writeonly image2D a;
+layout(bindless_image) uniform restrict writeonly imageBuffer o;
+layout(bindless_image) uniform restrict writeonly imageBuffer a;
 
 //O_SZ
 //I_SZ
@@ -16,35 +16,29 @@ layout(bindless_image) uniform writeonly image2D a;
 //columns = x = I_SZ
 //rows = y = O_SZ
 
-shared FLOAT4_T sum_var;
-shared FLOAT4_T activ_var;
-
 void main(){
 
     FLOAT_T sum = 0;
-    for(int idx = 0; idx < I_SZ / 4; idx ++)
-        sum += dot(imageLoad(w, ivec2(idx, gl_GlobalInvocationID.x)), imageLoad(i, ivec2(idx, 0)));
+    for(int idx = 0; idx < I_SZ; idx ++)
+        sum += imageLoad(w, int(F(gl_GlobalInvocationID.x, idx))).r * imageLoad(i, int(idx)).r;
 
-    sum += imageLoad(b, ivec2(gl_WorkGroupID.x, 0))[gl_LocalInvocationID.x];
+    sum += imageLoad(b, int(gl_GlobalInvocationID.x)).r;
 
-    sum_var[gl_LocalInvocationID.x] = sum;
-
+    FLOAT_T activ_var;
     switch(ACTIV_FN_IDX){
         case 0:
-            activ_var[gl_LocalInvocationID.x] = 1.0f / (1.0f + exp(sum));
+            activ_var = 1.0f / (1.0f + 1.0f/exp(sum));
             break;
         case 1:
-            activ_var[gl_LocalInvocationID.x] = tanh(sum);
+            activ_var = tanh(sum);
             break;
         case 2:
-            activ_var[gl_LocalInvocationID.x] = step(0.0hf, sum);
+            activ_var = step(0.0hf, sum) * sum;
             break;
     }
 
-    memoryBarrierShared();
-
-    imageStore(o, ivec2(gl_WorkGroupID.x, 0), sum_var);
-    imageStore(a, ivec2(gl_WorkGroupID.x, 0), activ_var);
+    imageStore(o, int(gl_GlobalInvocationID.x), vec4(sum));
+    imageStore(a, int(gl_GlobalInvocationID.x), vec4(activ_var));
 
 
     //o_tmp = w * i + b

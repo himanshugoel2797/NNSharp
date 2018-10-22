@@ -99,6 +99,34 @@ namespace NNSharp
             dev.Dispatch(dev["mv_madd", 1, optTS], new uint[] { (uint)a.Height, (uint)1 }, new uint[] { optTS, 1 });
         }
 
+        public static void MaddAct(Matrix a, Vector b, Vector c, Vector d, Vector e, string func)
+        {
+            if (a.Width != b.Length)
+                throw new ArgumentException();
+
+            if (a.Height != c.Length)
+                throw new ArgumentException();
+
+            if (a.Height != d.Length)
+                throw new ArgumentException();
+
+            if (d.Length != e.Length)
+                throw new ArgumentException();
+
+            var dev = Device.GetDevice(); 
+            dev.LoadKernel("mv_madd_act", func, Device.MatrixMultTS, Device.MatrixMultWPT);
+            var optTS = Device.OptimalTS("mv_madd_act_" + Math.Abs(func.GetHashCode()), a.Height, false, false);
+            dev["mv_madd_act_" + Math.Abs(func.GetHashCode()), 1, optTS].SetArgument(a.Height)
+                      .SetArgument(a.Width)
+                      .SetArgumentMemory(a.memory)
+                      .SetArgumentMemory(b.memory)
+                      .SetArgumentMemory(c.memory)
+                      .SetArgumentMemory(d.memory)
+                      .SetArgumentMemory(e.memory);
+
+            dev.Dispatch(dev["mv_madd_act_" + Math.Abs(func.GetHashCode()), 1, optTS], new uint[] { (uint)a.Height, (uint)1 }, new uint[] { optTS, 1 });
+        }
+
         public static void TMmult(Matrix a, Vector b, Vector c, Vector d)
         {
             if (a.Height != b.Length)
@@ -121,6 +149,30 @@ namespace NNSharp
                       .SetArgumentMemory(d.memory);
 
             dev.Dispatch(dev["tmv_mmult", 1, optTS], new uint[] { (uint)a.Width, (uint)1 }, new uint[] { optTS, 1 });
+        }
+
+        public static void TMmultAct(Matrix a, Vector b, Vector c, Vector d, string func)
+        {
+            if (a.Height != b.Length)
+                throw new ArgumentException();
+
+            if (a.Width != c.Length)
+                throw new ArgumentException();
+
+            if (a.Width != d.Length)
+                throw new ArgumentException();
+
+            var dev = Device.GetDevice();
+            dev.LoadKernel("tmv_mmult_act", func, Device.MatrixMultTS, Device.MatrixMultWPT);
+            var optTS = Device.OptimalTS("tmv_mmult_act_" + Math.Abs(func.GetHashCode()), a.Width, false, false);
+            dev["tmv_mmult_act_" + Math.Abs(func.GetHashCode()), 1, optTS].SetArgument(a.Height)
+                      .SetArgument(a.Width)
+                      .SetArgumentMemory(a.memory)
+                      .SetArgumentMemory(b.memory)
+                      .SetArgumentMemory(c.memory)
+                      .SetArgumentMemory(d.memory);
+
+            dev.Dispatch(dev["tmv_mmult_act_" + Math.Abs(func.GetHashCode()), 1, optTS], new uint[] { (uint)a.Width, (uint)1 }, new uint[] { optTS, 1 });
         }
 
         public static void MatrixProduct(Vector a, Vector b, Matrix c)

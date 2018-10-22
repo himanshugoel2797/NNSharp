@@ -25,13 +25,10 @@ namespace NNSharp3.Math
             Columns = columns;
 
             //TODO: Allocate a texture
-            tex = new Texture(columns, rows);
+            tex = new Texture(rows, columns);
             //TODO: Run a shader to fill the texture with iVal
             matrix_init.Set("val", iVal);
-            matrix_init.Set("cols_cnt", columns);
             matrix_init.Set("w", tex, false, true);
-            matrix_init.Dispatch((uint)tex.Width, (uint)tex.Height, 1);
-
             matrix_init.Dispatch((uint)tex.Width, (uint)tex.Height, 1);
         }
 

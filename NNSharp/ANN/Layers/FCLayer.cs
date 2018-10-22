@@ -18,24 +18,21 @@ namespace NNSharp.ANN.Layers
 
         private Matrix Weights;
         private Vector Biases;
-
-        [NonSerialized]
-        private Matrix WeightsShadow;
-
-        [NonSerialized]
-        private Vector BiasesShadow;
-
+        
         [NonSerialized]
         private Vector ResultMemory;
 
         [NonSerialized]
-        private Vector DerivActMemory;
-
+        private Vector ActivResultMemory;
+        
         [NonSerialized]
         private Vector CurDeltaMemory;
 
         [NonSerialized]
         private Matrix WeightDelta;
+
+        [NonSerialized]
+        private Vector PrevInput;
 
         public FCLayer(int k, IActivationFunction func)
         {
@@ -45,43 +42,48 @@ namespace NNSharp.ANN.Layers
 
         public Vector Forward(Vector input)
         {
-            Matrix.Madd(Weights, input, Biases, ResultMemory);
-            activation.Activation(ResultMemory);
-            return ResultMemory;
+            PrevInput = input;
+            Matrix.MaddAct(Weights, input, Biases, ResultMemory, ActivResultMemory, activation.Activation());
+            return ActivResultMemory;
         }
 
-        public void Learn(Vector input, Vector prev_delta, Matrix prev_w, out Vector cur_delta, out Matrix cur_w)
+        public void Learn()
         {
-            Error(input, prev_delta, prev_w, out cur_delta, out cur_w);
-            optimizer.Optimize(Weights, Biases, WeightDelta, cur_delta, WeightsShadow, BiasesShadow);
-
-            var tmp_w = Weights;
-            Weights = WeightsShadow;
-            WeightsShadow = tmp_w;
-
-            var tmp_b = Biases;
-            Biases = BiasesShadow;
-            BiasesShadow = tmp_b;
+            //Error(input, prev_delta, prev_w, out cur_delta, out cur_w);
+            optimizer.Optimize(Weights, Biases, WeightDelta, CurDeltaMemory);
         }
 
         public void Error(Vector input, Vector prev_delta, Matrix prev_w, out Vector cur_delta, out Matrix cur_w)
         {
             cur_w = Weights;
-            Matrix.Madd(Weights, input, Biases, DerivActMemory);
-            activation.DerivActivation(DerivActMemory);
-
+            
             if (prev_w == null)
             {
-                Vector.Hadamard(prev_delta, DerivActMemory, CurDeltaMemory);
+                Vector.HadamardAct(prev_delta, ResultMemory, CurDeltaMemory, activation.DerivActivation());
                 cur_delta = CurDeltaMemory;
             }
             else
             {
-                Matrix.TMmult(prev_w, prev_delta, DerivActMemory, CurDeltaMemory);
+                Matrix.TMmultAct(prev_w, prev_delta, ResultMemory, CurDeltaMemory, activation.DerivActivation());
                 cur_delta = CurDeltaMemory;
             }
 
-            Matrix.MatrixProduct(cur_delta, input, WeightDelta);
+            Matrix.MatrixProduct(cur_delta, PrevInput, WeightDelta);
+
+            if (prev_w != null && float.IsNaN(prev_w.Read()[0]))
+                throw new Exception();
+
+            if (float.IsNaN(prev_delta.Read()[0]))
+                throw new Exception();
+
+            if (float.IsNaN(ResultMemory.Read()[0]))
+                throw new Exception();
+
+            if (float.IsNaN(CurDeltaMemory.Read()[0]))
+                throw new Exception();
+
+            if (float.IsNaN(WeightDelta.Read()[0]))
+                throw new Exception();
         }
 
         public int GetOutputSize(int input)
@@ -95,12 +97,10 @@ namespace NNSharp.ANN.Layers
             output_sz = GetOutputSize(sz);
 
             if (Weights == null) Weights = new Matrix(sz, k, MemoryFlags.ReadWrite, false);
-            WeightsShadow = new Matrix(sz, k, MemoryFlags.ReadWrite, false);
             WeightDelta = new Matrix(sz, k, MemoryFlags.ReadWrite, false);
             if (Biases == null) Biases = new Vector(k, MemoryFlags.ReadWrite, false);
-            BiasesShadow = new Vector(k, MemoryFlags.ReadWrite, false);
             ResultMemory = new Vector(k, MemoryFlags.ReadWrite, false);
-            DerivActMemory = new Vector(k, MemoryFlags.ReadWrite, false);
+            ActivResultMemory = new Vector(k, MemoryFlags.ReadWrite, false);
             CurDeltaMemory = new Vector(k, MemoryFlags.ReadWrite, false);
         }
 

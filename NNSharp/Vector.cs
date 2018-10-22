@@ -67,6 +67,25 @@ namespace NNSharp
             dev.Dispatch(dev["v_hadamard", optWPT, optTS], new uint[] { (uint)a.Length / optWPT, (uint)1 }, new uint[] { optTS, 1 });
         }
 
+        public static void HadamardAct(Vector a, Vector b, Vector c, string activ)
+        {
+            if (a.Length != b.Length)
+                throw new ArgumentException();
+
+            if (a.Length != c.Length)
+                throw new ArgumentException();
+
+            var dev = Device.GetDevice();
+            dev.LoadKernel("v_hadamard", activ);
+            var optWPT = Device.OptimalWPT(a.Length);
+            var optTS = Device.OptimalTS("v_hadamard_" + Math.Abs(activ.GetHashCode()), a.Length, false, true);
+            dev["v_hadamard_" + Math.Abs(activ.GetHashCode()), optWPT, optTS].SetArgumentMemory(a.memory)
+                             .SetArgumentMemory(b.memory)
+                             .SetArgumentMemory(c.memory);
+
+            dev.Dispatch(dev["v_hadamard_" + Math.Abs(activ.GetHashCode()), optWPT, optTS], new uint[] { (uint)a.Length / optWPT, (uint)1 }, new uint[] { optTS, 1 });
+        }
+
         public static void MSub(Vector a, Vector b, float rate, Vector c)
         {
             if (a.Length != b.Length)

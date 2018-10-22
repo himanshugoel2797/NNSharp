@@ -8,7 +8,7 @@ namespace NNSharp.ANN
 {
     public interface IActivationFunction
     {
-        void Activation(Vector o);
-        void DerivActivation(Vector o);
+        string Activation();
+        string DerivActivation();
     }
 }

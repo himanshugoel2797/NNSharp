@@ -27,6 +27,9 @@ namespace NNSharp
         public const int WPT = 8;
         public const int TS = 256;
 
+        public const int MatrixMultTS = 5;
+        public const int MatrixMultWPT = 1;
+
         private static Device device;
         public static Device GetDevice()
         {
@@ -96,13 +99,28 @@ namespace NNSharp
             get { return kernels[name + "_" + wpt + "_" + ts]; }
         }
 
+        public string LoadKernel(string file, string substr, int ts_limit = 9, int wpt_limit = 4)
+        {
+            for (int i = 0; i < wpt_limit; i++)
+            {
+                for (int ts_n = 0; ts_n < ts_limit; ts_n++)
+                {
+                    CreateKernel(File.ReadAllText($"Kernels/{file}.cl").Replace("REPLACE_THIS", substr), file, substr, 1u << i, 1u << ts_n, out string err);
+
+                    if (!string.IsNullOrEmpty(err))
+                        return err;
+                }
+            }
+            return "";
+        }
+
         public string LoadKernel(string file, int ts_limit = 9, int wpt_limit = 4)
         {
             for (int i = 0; i < wpt_limit; i++)
             {
                 for (int ts_n = 0; ts_n < ts_limit; ts_n++)
                 {
-                    CreateKernel(File.ReadAllText($"Kernels/{file}.cl"), file, 1u << i, 1u << ts_n, out string err);
+                    CreateKernel(File.ReadAllText($"Kernels/{file}.cl"), file, "", 1u << i, 1u << ts_n, out string err);
 
                     if (!string.IsNullOrEmpty(err))
                         return err;
@@ -114,8 +132,8 @@ namespace NNSharp
         public void LoadAllKernels()
         {
             LoadKernel("gmm");
-            LoadKernel("mv_madd", 5, 1);
-            LoadKernel("tmv_mmult", 5, 1);
+            LoadKernel("mv_madd", MatrixMultTS, MatrixMultWPT);
+            LoadKernel("tmv_mmult", MatrixMultTS, MatrixMultWPT);
             LoadKernel("v_hadamard");
             LoadKernel("v_msub");
             LoadKernel("v_div");
@@ -128,7 +146,7 @@ namespace NNSharp
 
             LoadKernel("gan_disc_crossentropy_loss_deriv");
 
-            LoadKernel("relu");
+            /*LoadKernel("relu");
             LoadKernel("relu_deriv");
 
             LoadKernel("leaky_relu");
@@ -138,11 +156,18 @@ namespace NNSharp
             LoadKernel("sigmoid_deriv");
 
             LoadKernel("tanh_act");
-            LoadKernel("tanh_deriv");
+            LoadKernel("tanh_deriv");*/
         }
 
-        public Kernel CreateKernel(string code, string kernelName, uint wpt, uint ts, out string err)
+        public Kernel CreateKernel(string code, string kernelName, string subs_name, uint wpt, uint ts, out string err)
         {
+            string hash_str = string.IsNullOrWhiteSpace(subs_name) ? "" : "_" + Math.Abs(subs_name.GetHashCode());
+            if (kernels.ContainsKey(kernelName + hash_str + "_" + wpt + "_" + ts))
+            {
+                err = null;
+                return kernels[kernelName + hash_str + "_" + wpt + "_" + ts];
+            }
+
             code = $@"#define WPT {wpt}
 #define TS {ts}
 #define RTS ({ts / wpt})
@@ -157,7 +182,7 @@ namespace NNSharp
 
             if (errCode == "Success")
             {
-                kernels[kernelName + "_" + wpt + "_" + ts] = kernel;
+                kernels[kernelName + hash_str + "_" + wpt + "_" + ts] = kernel;
                 if (!string.IsNullOrWhiteSpace(err))
                     throw new Exception(err);
 

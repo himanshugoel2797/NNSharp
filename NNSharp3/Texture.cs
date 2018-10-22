@@ -1,4 +1,5 @@
-﻿using OpenGL;
+﻿using NNSharp3.Math;
+using OpenGL;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -12,6 +13,7 @@ namespace NNSharp3
     public class Texture : IDisposable
     {
         internal uint texID;
+        internal uint bufferID;
         internal ulong imgHandle;
 
         private int w, h;
@@ -19,50 +21,94 @@ namespace NNSharp3
         public int Width { get { return w; } }
         public int Height { get { return h; } }
 
+#if F16
+        internal const InternalFormat internalFormat = InternalFormat.R16f;
+        const int Multiplier = 2;
+#else
+        internal const InternalFormat internalFormat = InternalFormat.R32f;
+        const int Multiplier = 4;
+#endif
+
         public Texture(int w, int h)
         {
-            if (w % 4 != 0)
-                w += 4 - w % 4;
-
-            this.w = w / 4;
+            this.w = w;
             this.h = h;
 
-            texID = Gl.CreateTexture(TextureTarget.Texture2d);
-            Gl.TextureStorage2D(texID, 1, InternalFormat.Rgba16f, w / 4, h);
-
+            texID = Gl.CreateTexture((TextureTarget)Gl.TEXTURE_BUFFER);
+            bufferID = Gl.CreateBuffer();
+            Gl.NamedBufferStorage(bufferID, (uint)(w * h * Multiplier), IntPtr.Zero, Gl.DYNAMIC_STORAGE_BIT);
+            Gl.TextureBuffer(texID, internalFormat, bufferID);
         }
 
         public void SetData(Bitmap bmp)
         {
-            IntPtr pval = IntPtr.Zero;
-            System.Drawing.Imaging.BitmapData bd = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-            try
-            {
-                pval = bd.Scan0;
-                Gl.TextureSubImage2D(texID, 0, 0, 0, w, h, OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, pval);
-            }
-            finally
-            {
-                bmp.UnlockBits(bd);
-            }
+#if F16
+            var d = new Half[bmp.Width * bmp.Height * 4];
+            for(int y = 0; y < bmp.Height; y++)
+                for(int x = 0; x < bmp.Width; x++)
+                {
+                    d[(y * bmp.Width + x) * 4] = new Half(bmp.GetPixel(x, y).R / (float)255);
+                    d[(y * bmp.Width + x) * 4 + 1] = new Half(bmp.GetPixel(x, y).G / (float)255);
+                    d[(y * bmp.Width + x) * 4 + 2] = new Half(bmp.GetPixel(x, y).B / (float)255);
+                    d[(y * bmp.Width + x) * 4 + 3] = new Half(bmp.GetPixel(x, y).A / (float)255);
+
+                }
+#else
+            var d = new float[bmp.Width * bmp.Height * 4];
+            for (int y = 0; y < bmp.Height; y++)
+                for (int x = 0; x < bmp.Width; x++)
+                {
+                    d[(y * bmp.Width + x) * 4] = (bmp.GetPixel(x, y).R / (float)255);
+                    d[(y * bmp.Width + x) * 4 + 1] = (bmp.GetPixel(x, y).G / (float)255);
+                    d[(y * bmp.Width + x) * 4 + 2] = (bmp.GetPixel(x, y).B / (float)255);
+                    d[(y * bmp.Width + x) * 4 + 3] = (bmp.GetPixel(x, y).A / (float)255);
+
+                }
+#endif
+            Gl.NamedBufferSubData(bufferID, IntPtr.Zero, (uint)(bmp.Width * bmp.Height * 4 * Multiplier), d);
         }
 
         public void SetData(byte[] data)
         {
-            Gl.TextureSubImage2D(texID, 0, 0, 0, w, h, OpenGL.PixelFormat.Rgba, PixelType.HalfFloat, data);
+#if F16
+            var d = new Half[data.Length];
+            for (int i = 0; i < d.Length; i++)
+                d[i] = new Half(data[i]);
+#else
+            var d = new float[data.Length];
+            for (int i = 0; i < d.Length; i++)
+                d[i] = (data[i]);
+#endif
+            Gl.NamedBufferSubData(bufferID, IntPtr.Zero, (uint)(data.Length * Multiplier), d);
         }
 
         public void SetData(float[] data)
         {
-            Gl.TextureSubImage2D(texID, 0, 0, 0, w, h, OpenGL.PixelFormat.Rgba, PixelType.Float, data);
+#if F16
+            var d = new Half[data.Length];
+            for (int i = 0; i < d.Length; i++)
+                d[i] = new Half(data[i]);
+#else
+            var d = data;
+#endif
+            Gl.NamedBufferSubData(bufferID, IntPtr.Zero, (uint)(data.Length * Multiplier), d);
         }
 
         public void GetData(float[] data)
         {
-            Gl.GetTextureImage(texID, 0, OpenGL.PixelFormat.Rgba, PixelType.Float, data.Length * sizeof(float), data);
+#if F16
+            var d = new Half[data.Length];
+#else
+            var d = data;
+#endif
+            Gl.GetNamedBufferSubData(bufferID, IntPtr.Zero, (uint)(data.Length * Multiplier), d);
+#if F16
+            for (int i = 0; i < data.Length; i++)
+                data[i] = d[i];
+#endif
         }
 
-        #region IDisposable Support
+#region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
         protected virtual void Dispose(bool disposing)
@@ -76,6 +122,7 @@ namespace NNSharp3
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
+                if (bufferID != 0) Gl.DeleteBuffers(bufferID);
                 if (texID != 0) Gl.DeleteTextures(texID);
 
                 disposedValue = true;
@@ -97,6 +144,6 @@ namespace NNSharp3
             // TODO: uncomment the following line if the finalizer is overridden above.
             GC.SuppressFinalize(this);
         }
-        #endregion
+#endregion
     }
 }

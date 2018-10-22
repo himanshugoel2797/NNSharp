@@ -7,9 +7,9 @@ namespace NNSharp.Tests
     [TestClass]
     public class MatrixTests
     {
-        const int M = 32;
+        const int M = 320;
         const int K = (16);
-        const int N = 64;
+        const int N = 640;
 
         [TestMethod]
         public void MatrixVectorMadd()
