@@ -20,7 +20,7 @@ namespace AnimeAI.Tests
         NeuralNetwork superres_enc, superres_dec, superres_comb;
 
         const int StartSide = 32;
-        const int LatentSize = 2 * 2 * 8;
+        const int LatentSize = 2 * 2 * 5;
         const int EndSide = 32;
         const int InputSize = StartSide * StartSide * 3;
         const int OutputSize = EndSide * EndSide * 3;
@@ -33,18 +33,18 @@ namespace AnimeAI.Tests
                 .LossFunction<Quadratic>()
                 .WeightInitializer(new UniformWeightInitializer(0, 0.001f))
                 
-                .AddConv(3, 16, 1, 0, StartSide, 3)
-                .AddActivation<Tanh>()
-                .AddPooling(2, 2, 16)
-                .AddConv(3, 8, 1, 2, (StartSide - 2)/2, 16)
-                .AddActivation<Tanh>()
-                .AddPooling(2, 2, 8)
-                .AddConv(3, 8, 1, 0, 8, 8)
-                .AddActivation<Tanh>()
-                .AddConv(3, 8, 1, 0, 6, 8)
-                .AddActivation<Tanh>()
-                .AddConv(3, 8, 1, 0, 4, 8)
-                .AddActivation<Tanh>()
+                .AddConv(3, 30, 1, 0, StartSide, 3)
+                .AddActivation<LeakyReLU>()
+                .AddPooling(2, 2, 30)
+                .AddConv(3, 15, 1, 2, (StartSide - 2)/2, 30)
+                .AddActivation<LeakyReLU>()
+                .AddPooling(2, 2, 15)
+                .AddConv(3, 15, 1, 0, 8, 15)
+                .AddActivation<LeakyReLU>()
+                .AddConv(3, 5, 1, 0, 6, 15)
+                .AddActivation<LeakyReLU>()
+                .AddConv(3, 5, 1, 0, 4, 5)
+                .AddActivation<LeakyReLU>()
                 .Build();
             /*
             superres_dec = new NeuralNetworkBuilder(LatentSize)
@@ -63,34 +63,34 @@ namespace AnimeAI.Tests
             superres_dec = new NeuralNetworkBuilder(LatentSize)
                 .LossFunction<Quadratic>()
                 .WeightInitializer(new UniformWeightInitializer(0, 0.001f))
-                .AddConv(3, 8, 1, 2, 2, 8)
-                .AddActivation<Tanh>()
+                .AddConv(3, 8, 1, 2, 2, 5)
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 8, 1, 2, 4, 8)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 8, 1, 2, 6, 8)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 8, 1, 2, 8, 8)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 8, 1, 2, 10, 8)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 12, 8)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 14, 6)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 16, 6)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 18, 6)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 20, 6)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 22, 6)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 24, 6)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 26, 6)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 6, 1, 2, 28, 6)
-                .AddActivation<Tanh>()
+                .AddActivation<LeakyReLU>()
                 .AddConv(3, 3, 1, 2, 30, 6)
                 .AddActivation<Tanh>()
                 .Build();
@@ -119,8 +119,7 @@ namespace AnimeAI.Tests
             AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\emilia_(re_zero)", @"I:\Datasets\anime-faces\emilia_small");
             b_dataset.InitializeDataset();
 
-            SGD sgd = new SGD();
-            sgd.SetLearningRate(0.05f);
+            Adam sgd = new Adam(0.3f);
 
             NRandom r = new NRandom(0);
             NRandom r2 = new NRandom(0);
@@ -202,8 +201,8 @@ namespace AnimeAI.Tests
 
                 err0 /= BatchSize;
                 Console.WriteLine($"[{i0}] Error: {err0}");
-                sgd.Update(err0);
-                sgd.SetLearningRate(0.5f);// * (float)Math.Exp(-i0 * 0.001f));
+                //sgd.Update(err0);
+                //sgd.SetLearningRate(0.5f);// * (float)Math.Exp(-i0 * 0.001f));
                 if (err0 < err)
                 {
                     if (err0 < 0.01f)

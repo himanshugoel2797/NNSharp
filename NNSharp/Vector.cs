@@ -259,6 +259,43 @@ namespace NNSharp
 #endif
         }
 
+        public static void Add(Vector a, Vector b, int off)
+        {
+#if GPU
+#error TODO
+#elif CPU
+            //Parallel.For(0, b.memory.Length, (i) => b.memory[i] += a.memory[i]);
+            unsafe
+            {
+                float b_v = b.memory[off];
+                fixed (float* a_p = a.memory)
+                {
+                    for (int i = 0; i < a.Length; i++)
+                        a_p[i] += b_v;
+                }
+            }
+#endif
+        }
+
+        public static void VectorSum(Vector a, int a_off, Vector b, int b_off, int b_side)
+        {
+#if GPU
+#error TODO
+#elif CPU
+            //Parallel.For(0, b.memory.Length, (i) => b.memory[i] += a.memory[i]);
+            unsafe
+            {
+                fixed (float* a_p = a.memory)
+                fixed (float* b_p = b.memory)
+                {
+                    for (int i = 0; i < b_side; i++)
+                        for (int j = 0; j < b_side; j++)
+                            a_p[a_off] += b.memory[b_off + i * b_side + j];
+                }
+            }
+#endif
+        }
+
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
 #if GPU

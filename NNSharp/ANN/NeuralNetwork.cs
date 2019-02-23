@@ -347,6 +347,64 @@ namespace NNSharp.ANN
                     //Compare the derivative to the actual derivatives
                     if (printNorms) Console.WriteLine($"Norms: { diff_norm / sum_norm }");
                 }
+                else if (layers[i] is Layers.ConvLayer)
+                {
+                    for (int wc0 = 0; wc0 < (layers[i] as Layers.ConvLayer).Weights.Length; wc0++)
+                        for (int wc1 = 0; wc1 < (layers[i] as ConvLayer).Weights[wc0].Length; wc1++)
+                        {
+
+                            var w_delta_mat = new float[(layers[i] as Layers.ConvLayer).Weights[wc0][wc1].Width * (layers[i] as Layers.ConvLayer).Weights[wc0][wc1].Height];
+                            var delta_w = (layers[i] as Layers.ConvLayer).Weights[wc0][wc1].Width;
+                            var delta_h = (layers[i] as Layers.ConvLayer).Weights[wc0][wc1].Height;
+
+                            TrainSingle(rand_input, rand_output, sgd);
+                            var w_delta_orig = new float[w_delta_mat.Length];
+                            (layers[i] as Layers.ConvLayer).WeightErrors[wc0][wc1].Read(w_delta_orig);
+
+                            float diff_norm = 0;
+                            float sum_norm = 0;
+                            var net = new float[w_delta_mat.Length];
+
+                            for (int j = 0; j < w_delta_mat.Length; j++)
+                            {
+                                //Update a weight by subtracting epsilon
+                                var orig_weight = (layers[i] as Layers.ConvLayer).Weights[wc0][wc1].Read()[j];
+                                (layers[i] as Layers.ConvLayer).Weights[wc0][wc1].Write(new float[] { orig_weight + epsilon }, j);
+                                TrainSingle(rand_input, rand_output, sgd);
+                                float net_loss0 = Error();
+
+                                //Update a weight by adding epsilon
+                                (layers[i] as Layers.ConvLayer).Weights[wc0][wc1].Write(new float[] { orig_weight - epsilon }, j);
+                                TrainSingle(rand_input, rand_output, sgd);
+                                float net_loss1 = Error();
+
+                                //Compute the derivative
+                                w_delta_mat[j] = (net_loss0 - net_loss1) / (2 * epsilon);
+
+                                //Reset the weight
+                                (layers[i] as Layers.ConvLayer).Weights[wc0][wc1].Write(new float[] { orig_weight }, j);
+
+                                float diff = w_delta_mat[j] - w_delta_orig[j];
+                                //if(diff < epsilon) Console.Clear();
+                                //Console.WriteLine($"[{j}] (N - O)  {w_delta_mat[j]} - {w_delta_orig[j]} = {diff}");
+
+                                net[j] = w_delta_mat[j] / (w_delta_orig[j] + float.Epsilon);
+                                //if(net[j] > 1 + epsilon | net[j] < 1 - epsilon)Console.WriteLine($"[{j}] {net[j]}");
+
+                                diff_norm += diff * diff;
+                                sum_norm += (w_delta_mat[j] + w_delta_orig[j]) * (w_delta_mat[j] + w_delta_orig[j]);
+                            }
+
+                            diff_norm = (float)Math.Sqrt(diff_norm);
+                            sum_norm = (float)Math.Sqrt(sum_norm);
+
+                            net_norm += diff_norm / sum_norm;
+                            norm_cnt++;
+
+                            //Compare the derivative to the actual derivatives
+                            if (printNorms) Console.WriteLine($"Norms: { diff_norm / sum_norm }");
+                        }
+                }
 
 
             }

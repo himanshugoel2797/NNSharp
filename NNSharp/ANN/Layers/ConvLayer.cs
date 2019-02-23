@@ -14,9 +14,13 @@ namespace NNSharp.ANN.Layers
         //Backward: Apply deconvolution to update the filters
         private int inputSz = 0, outputSz = 0, inputDepth = 0, filterSz = 0 /*F*/, paddingSz = 0 /*P*/, filterCnt = 0 /*K*/, strideLen = 0 /*S*/;
         public Matrix[][] Weights;
+        public Vector Bias;
 
         [NonSerialized]
         public Matrix[][] WeightErrors;
+
+        [NonSerialized]
+        private Vector BiasError;
 
         [NonSerialized]
         private Vector Output;
@@ -63,9 +67,11 @@ namespace NNSharp.ANN.Layers
             for (int i = 0; i < filterCnt; i++)
                 for (int j = 0; j < inputDepth; j++)
                     Matrix.Mult(WeightErrors[i][j], 0);
+
+            Vector.Mult(BiasError, 0);
         }
 
-        private static void Convolve(float[] input, int inputOff, int inputSz, int paddingSz, int strideLen, float[] filter, bool rotFilter, int filterOff, int filterSz, float[] output, bool rotOutput, int outputOff, int outputSz)
+        private static void Convolve(float[] input, bool rotInput, int inputOff, int inputSz, int paddingSz, int strideLen, float[] filter, bool rotFilter, int filterOff, int filterSz, float[] output, bool rotOutput, int outputOff, int outputSz)
         {
             Parallel.For(0, outputSz, (y) =>
             //for (int y = 0; y < outputSz; y++)
@@ -82,9 +88,12 @@ namespace NNSharp.ANN.Layers
                                 if (i_x >= 0 && i_x < inputSz)
                                 {
                                     float filter_val = filter[filterOff + (filterSz - 1 - y0) * filterSz + (filterSz - 1 - x0)];
-                                    if (rotOutput) filter_val = filter[filterOff + y0 * filterSz + x0];
+                                    if (rotFilter) filter_val = filter[filterOff + y0 * filterSz + x0];
 
-                                    float output_val = filter_val * input[inputOff + i_y * inputSz + i_x];
+                                    float input_val = input[inputOff + i_y * inputSz + i_x];
+                                    if (rotInput) input_val = input[inputOff + (inputSz - 1 - i_y) * inputSz + (inputSz - 1 - i_x)];
+
+                                    float output_val = filter_val * input_val;
 
                                     if (rotOutput) output[outputOff + (outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] += output_val;
                                     else output[outputOff + y * outputSz + x] += output_val;
@@ -98,9 +107,12 @@ namespace NNSharp.ANN.Layers
         {
             if (update_cur)
             {
+                //Vector.Add(BiasError, prev_delta);
+
                 //Filter weight errors = covolution of Input with prev_delta <- doesn't tell us about individual filters per input dimension -> For now, treat the error as the same for each filter per input dimension
                 for (int i = 0; i < filterCnt; i++)
                 {
+                    Vector.VectorSum(BiasError, i, prev_delta, i * outputSz * outputSz, outputSz);
                     for (int j = 0; j < inputDepth; j++)
                     {
                         //convolution of input with prev_delta subportion for current filterCnt index
@@ -164,7 +176,7 @@ namespace NNSharp.ANN.Layers
                            //strLen = strideLen
                            //((filterSz - 1) * strideLen - inputSz + outputSz)/2
 
-                        Convolve(PrevInput.memory, j * inputSz * inputSz, inputSz, padd, strideLen, prev_delta.memory, true, i * outputSz * outputSz, outputSz, WeightErrors[i][j].memory, true, 0, filterSz);
+                        Convolve(PrevInput.memory, false, j * inputSz * inputSz, inputSz, padd, strideLen, prev_delta.memory, true, i * outputSz * outputSz, outputSz, WeightErrors[i][j].memory, true, 0, filterSz);
 #endif
                     }
                 }
@@ -238,7 +250,8 @@ namespace NNSharp.ANN.Layers
                                         BackwardDelta.memory[j * inputSz * inputSz + (y) * inputSz + (x)] += Weights[i][j].memory[(y0) * filterSz + (x0)] * prev_delta.memory[i * outputSz * outputSz + (outputSz - 1 - i_y) * outputSz + (outputSz - 1 - i_x)];
                                 }
                     }*///);
-                    Convolve(Weights[i][j].memory, 0, filterSz, pSz, strideLen, prev_delta.memory, true, i * outputSz * outputSz, outputSz, BackwardDelta.memory, false, j * inputSz * inputSz, inputSz);
+                    //Convolve(Weights[i][j].memory, false, 0, filterSz, outputSz - 1, strideLen, prev_delta.memory, true, i * outputSz * outputSz, outputSz, BackwardDelta.memory, true, j * inputSz * inputSz, inputSz);
+                    Convolve(prev_delta.memory, false, i * outputSz * outputSz, outputSz, padd, strideLen, Weights[i][j].memory, true, 0, filterSz, BackwardDelta.memory, false, j * inputSz * inputSz, inputSz);
 #endif
                 }
             }
@@ -328,11 +341,13 @@ namespace NNSharp.ANN.Layers
                         }
                         Console.WriteLine("]");
                     }*/
-                    Convolve(input.memory, j * inputSz * inputSz, inputSz, paddingSz, strideLen, Weights[i][j].memory, false, 0, filterSz, Output.memory, false, i * outputSz * outputSz, outputSz);
+                    Convolve(input.memory, false, j * inputSz * inputSz, inputSz, paddingSz, strideLen, Weights[i][j].memory, false, 0, filterSz, Output.memory, false, i * outputSz * outputSz, outputSz);
 #endif
                 }
                 //Console.WriteLine("\n\n");
+                Vector.Add(Output, Bias, i);
             }
+
             return Output;
         }
 
@@ -344,13 +359,18 @@ namespace NNSharp.ANN.Layers
 
         public void Learn(IOptimizer optimizer)
         {
+            optimizer.RegisterLayer(this, filterCnt * inputDepth, filterSz, filterSz, 1, filterCnt);
+
+            int q = 0;
             for (int i = 0; i < filterCnt; i++)
             {
                 for (int j = 0; j < inputDepth; j++)
                 {
-                    optimizer.Optimize(Weights[i][j], WeightErrors[i][j]);
+                    optimizer.Optimize(this, q++, Weights[i][j], WeightErrors[i][j]);
                 }
             }
+
+            optimizer.Optimize(this, 0, Bias, BiasError);
         }
 
         public int GetFlatOutputSize()
@@ -413,24 +433,31 @@ namespace NNSharp.ANN.Layers
 
             //Need intermediate storage for each filter
             Output = new Vector(outputSz * outputSz * filterCnt, MemoryFlags.ReadWrite, false);
+
+            Bias = new Vector(filterCnt, MemoryFlags.ReadWrite, false);
+            BiasError = new Vector(filterCnt, MemoryFlags.ReadWrite, false);
+
             BackwardDelta = new Vector(inputSz * inputSz * inputDepth, MemoryFlags.ReadWrite, false);
         }
 
         public void SetWeights(IWeightInitializer weightInitializer)
         {
             float[] rng = new float[filterSz * filterSz];
+            float[] rng_b = new float[filterCnt];
             for (int i = 0; i < filterCnt; i++)
             {
                 for (int j = 0; j < inputDepth; j++)
                 {
                     for (int x = 0; x < filterSz * filterSz; x++)
                     {
-                        rng[x] = weightInitializer.GetWeight(filterSz, filterSz);
+                        rng[x] = weightInitializer.GetWeight(inputSz * inputSz, outputSz * outputSz);
                     }
 
                     Weights[i][j].Write(rng);
                 }
+                rng_b[i] = weightInitializer.GetBias();
             }
+            Bias.Write(rng_b);
         }
     }
 }

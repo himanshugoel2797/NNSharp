@@ -42,15 +42,15 @@ namespace NNSharp.Test
             Matrix.MatrixProduct(b, c, res3);*/
 
             //ITest t = new Classifiers.TextClassifier();
-            //var t = new Benchmarks.DeepNetworkCheck();// ConvNetworkCheck();
+            var t = new Benchmarks.ConvNetworkCheck();//DeepNetworkCheck() ;
             //var t = new MathTests.Convolution();
             //var t = new HeadlessDGAN();
-            //t.Run();
+            t.Run();
 
             //var a = new MathTests.Convolution(); 
             //a.Run();
-            var a = new OLD.ConvolutionalAutoencoder();
-            a.Train();
+            //var a = new OLD.ConvolutionalAutoencoder();
+            //a.Train();
 
             //Benchmarks.BenchmarkRunner benchmarkRunner = new Benchmarks.BenchmarkRunner();
             //benchmarkRunner.Run();

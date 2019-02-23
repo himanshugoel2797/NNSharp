@@ -93,7 +93,7 @@
     <Compile Include="ANN\IWeightInitializer.cs" />
     <Compile Include="ANN\Kernels\KernelManager.cs" />
     <Compile Include="ANN\Layers\ActivationLayer.cs" />
-    <Compile Include="ANN\Layers\DeConvLayer.cs" />
+    <Compile Include="ANN\Layers\BatchNormalization.cs" />
     <Compile Include="ANN\Layers\ConvLayer.cs" />
     <Compile Include="ANN\Layers\FCLayer.cs" />
     <Compile Include="ANN\Layers\PoolingLayer.cs" />
@@ -105,7 +105,6 @@
     <Compile Include="ANN\NeuralNetwork.cs" />
     <Compile Include="ANN\NeuralNetworkBuilder.cs" />
     <Compile Include="ANN\Optimizers\Adam.cs" />
-    <Compile Include="ANN\Optimizers\VelocityGD.cs" />
     <Compile Include="ANN\Optimizers\SGD.cs" />
     <Compile Include="ANN\WeightInitializers\UniformWeightInitializer.cs" />
     <Compile Include="CLEvent.cs" />

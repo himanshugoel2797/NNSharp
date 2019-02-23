@@ -15,14 +15,19 @@ namespace NNSharp.ANN.Optimizers
         {
         }
 
-        public void Optimize(Matrix w, Matrix nabla_w)
+        public void Optimize(ILayer layer, int idx, Matrix w, Matrix nabla_w)
         {
             Matrix.MSubSelf(nabla_w, w, r);
         }
 
-        public void Optimize(Vector b, Vector nabla_b)
+        public void Optimize(ILayer layer, int idx, Vector b, Vector nabla_b)
         {
             Vector.MSubSelf(nabla_b, b, r);
+        }
+
+        public void RegisterLayer(ILayer layer, int w_cnt, int ww_len, int wh_len, int b_cnt, int b_len)
+        {
+
         }
 
         public void SetLearningRate(float v)

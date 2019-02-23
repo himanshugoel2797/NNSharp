@@ -44,8 +44,9 @@ namespace NNSharp.ANN.Layers
 
         public void Learn(IOptimizer optimizer)
         {
-            optimizer.Optimize(Weights, WeightDelta);
-            optimizer.Optimize(Biases, BiasDelta);
+            optimizer.RegisterLayer(this, 1, input_sz, k, 1, k);
+            optimizer.Optimize(this, 1, Weights, WeightDelta);
+            optimizer.Optimize(this, 1, Biases, BiasDelta);
         }
 
         public void Reset()
@@ -61,7 +62,7 @@ namespace NNSharp.ANN.Layers
             {
                 //Compute the current weights using prev_delta as the error
                 Matrix.MatrixProduct(prev_delta, PrevInput, WeightDelta);
-                Vector.Add(prev_delta, BiasDelta);
+                Vector.Add(BiasDelta, prev_delta);
             }
 
             //Compute the error to propagate to the following layer

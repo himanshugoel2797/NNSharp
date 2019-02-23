@@ -283,7 +283,7 @@ namespace AnimeAI.Tests
 
             for (int i = offset; i < offset + Side * Side; i++)
             {
-                if (img[i] < 0) img[i] = 0;
+                if (img[i] < -1) img[i] = -1;
                 if (img[i] > 1) img[i] = 1;
 
                 img[i] = (float)Math.Pow(img[i], 2);

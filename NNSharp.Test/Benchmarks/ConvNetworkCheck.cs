@@ -30,7 +30,7 @@ namespace NNSharp.Test.Benchmarks
             for (int i = 0; i < 10; i++)
             {
                 harness.Start();
-                nn.Check(0.1f, i == 0);
+                nn.Check(0.001f, i == 0);
                 harness.Stop();
             }
             harness.Show();
