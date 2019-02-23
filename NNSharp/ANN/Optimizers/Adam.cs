@@ -21,7 +21,7 @@ namespace NNSharp.ANN.Optimizers
         private float learning_rate, beta_1, beta_2;
         private Dictionary<ILayer, AdamParams> layers;
 
-        public Adam(float learning_rate, float beta_1 = 0.9f, float beta_2 = 0.999f)
+        public Adam(float learning_rate = 0.001f, float beta_1 = 0.9f, float beta_2 = 0.999f)
         {
             this.layers = new Dictionary<ILayer, AdamParams>();
             this.learning_rate = learning_rate;

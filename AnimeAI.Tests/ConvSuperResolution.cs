@@ -119,7 +119,7 @@ namespace AnimeAI.Tests
             AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\emilia_(re_zero)", @"I:\Datasets\anime-faces\emilia_small");
             b_dataset.InitializeDataset();
 
-            Adam sgd = new Adam(0.3f);
+            Adam sgd = new Adam(0.001f);
 
             NRandom r = new NRandom(0);
             NRandom r2 = new NRandom(0);
