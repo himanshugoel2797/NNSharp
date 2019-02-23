@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NNSharp.Tools;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,12 +10,12 @@ namespace NNSharp.ANN.WeightInitializers
     [Serializable]
     public class UniformWeightInitializer : IWeightInitializer
     {
-        private Random rng;
+        private NRandom rng;
         private float b;
 
         public UniformWeightInitializer(int seed, float bias)
         {
-            rng = new Random(seed);
+            rng = new NRandom(seed);
             b = bias;
         }
 

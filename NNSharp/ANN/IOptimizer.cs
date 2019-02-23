@@ -9,6 +9,8 @@ namespace NNSharp.ANN
     public interface IOptimizer
     {
         void SetLearningRate(float v);
-        void Optimize(Matrix w, Vector b, Matrix nabla_w, Vector nabla_b);
+        void Optimize(Matrix w, Matrix nabla_w);
+        void Optimize(Vector b, Vector nabla_b);
+        void Update(float curError);
     }
 }

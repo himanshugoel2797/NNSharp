@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NNSharp.ANN.Kernels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,28 +20,59 @@ namespace NNSharp.ANN.LossFunctions
 
         public void Loss(Vector output, Vector expectedOutput, Vector result)
         {
-            var dev = Device.GetDevice();
-
-            var optWPT = Device.OptimalWPT(output.Length);
-            var optTS = Device.OptimalTS(func, output.Length, false, true);
-            dev[func, optWPT, optTS].SetArgumentMemory(output.memory)
-                                 .SetArgumentMemory(expectedOutput.memory)
-                                 .SetArgumentMemory(result.memory);
-
-            dev.Dispatch(dev[func, optWPT, optTS], new uint[] { (uint)output.Length / optWPT, 1 }, new uint[] { optTS, 1 });
+#if GPU
+            KernelManager.Loss(expectedOutput, output, result, func);
+#elif CPU
+            switch (func)
+            {
+                case "quadratic_loss":
+                    {
+                        Parallel.For(0, result.Length, (i) => result.memory[i] += (0.5f * (float)Math.Pow(output.memory[i] - expectedOutput.memory[i], 2))/result.Length);
+                    }
+                    break;
+                case "binary_cross_entropy":
+                    {
+                        //- (z * log(y + eps) + (1-z) * log(1 - y + eps))
+                        //z = expected out
+                        //y = actual output
+                        Parallel.For(0, result.Length, (i) =>
+                        {
+                            result.memory[i] += (-(float)(expectedOutput.memory[i] * Math.Log(output.memory[i] + float.Epsilon) + (1 - expectedOutput.memory[i]) * Math.Log(1 - output.memory[i] + float.Epsilon)) / result.Length);
+                        });
+                    }
+                    break;
+            }
+#endif
         }
 
         public void LossDeriv(Vector output, Vector expectedOutput, Vector result)
         {
-            var dev = Device.GetDevice();
-
-            var optWPT = Device.OptimalWPT(output.Length);
-            var optTS = Device.OptimalTS(func_deriv, output.Length, false, true);
-            dev[func_deriv, optWPT, optTS].SetArgumentMemory(output.memory)
-                                 .SetArgumentMemory(expectedOutput.memory)
-                                 .SetArgumentMemory(result.memory);
-
-            dev.Dispatch(dev[func_deriv, optWPT, optTS], new uint[] { (uint)output.Length / optWPT, 1 }, new uint[] { optTS, 1 });
+#if GPU
+            KernelManager.Loss(expectedOutput, output, result, func_deriv);
+#elif CPU
+            switch (func_deriv)
+            {
+                case "quadratic_loss_deriv":
+                    {
+                        Parallel.For(0, result.Length, (i) => result.memory[i] += (output.memory[i] - expectedOutput.memory[i]) / result.Length);
+                    }
+                    break;
+                case "binary_cross_entropy_deriv":
+                    {
+                        //- (z / (y + eps) - (1 - z) / (1 - y + eps));
+                        //z = expected out
+                        //y = actual output
+                        Parallel.For(0, result.Length, (i) =>
+                        {
+                            float r_0 = ((1.0f - expectedOutput.memory[i]) - output.memory[i]);
+                            float r = (r_0 == 0) ? 0 : (1.0f / r_0);
+                            result.memory[i] += r;
+                            //result.memory[i] += -(float)((expectedOutput.memory[i] / (output.memory[i] + float.Epsilon) - (1 - expectedOutput.memory[i]) / (1 - output.memory[i] + float.Epsilon))/result.Length);
+                        });
+                    }
+                    break;
+            }
+#endif
         }
     }
 }

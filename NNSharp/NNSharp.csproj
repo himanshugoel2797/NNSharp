@@ -19,7 +19,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;GPU</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -27,28 +27,30 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>TRACE;GPU</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x64\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;CPU</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <UseVSHostingProcess>true</UseVSHostingProcess>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <OutputPath>bin\x64\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>TRACE;CPU</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="OpenCL.Net, Version=2.2.9.0, Culture=neutral, processorArchitecture=MSIL">
@@ -60,6 +62,9 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Forms.DataVisualization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -70,37 +75,107 @@
   <ItemGroup>
     <Compile Include="ANN\ActivationFunctions\ActivationFunctionBase.cs" />
     <Compile Include="ANN\ActivationFunctions\LeakyReLU.cs" />
+    <Compile Include="ANN\ActivationFunctions\Softmax.cs" />
     <Compile Include="ANN\ActivationFunctions\Tanh.cs" />
     <Compile Include="ANN\ActivationFunctions\Sigmoid.cs" />
     <Compile Include="ANN\ActivationFunctions\ReLU.cs" />
+    <Compile Include="ANN\Datasets\NoisyImageSet.cs" />
+    <Compile Include="ANN\Datasets\LabeledFileImageSet.cs" />
+    <Compile Include="ANN\Datasets\UnlabeledImageSet.cs" />
     <Compile Include="ANN\IActivationFunction.cs" />
+    <Compile Include="ANN\IDataset.cs" />
+    <Compile Include="ANN\ICNNLayer.cs" />
     <Compile Include="ANN\ILayer.cs" />
     <Compile Include="ANN\ILossFunction.cs" />
+    <Compile Include="ANN\INetworkTrainer.cs" />
     <Compile Include="ANN\IOptimizer.cs" />
     <Compile Include="ANN\IWeightInitializable.cs" />
     <Compile Include="ANN\IWeightInitializer.cs" />
+    <Compile Include="ANN\Kernels\KernelManager.cs" />
+    <Compile Include="ANN\Layers\ActivationLayer.cs" />
+    <Compile Include="ANN\Layers\DeConvLayer.cs" />
     <Compile Include="ANN\Layers\ConvLayer.cs" />
     <Compile Include="ANN\Layers\FCLayer.cs" />
-    <Compile Include="ANN\LossFunctions\GAN_GenCrossEntropy.cs" />
-    <Compile Include="ANN\LossFunctions\GAN_DiscCrossEntropy.cs" />
+    <Compile Include="ANN\Layers\PoolingLayer.cs" />
+    <Compile Include="ANN\LossFunctions\BinaryCrossEntropy.cs" />
     <Compile Include="ANN\LossFunctions\LossFunctionBase.cs" />
     <Compile Include="ANN\LossFunctions\Quadratic.cs" />
+    <Compile Include="ANN\NetworkTrainer\ClassifierTrainer.cs" />
+    <Compile Include="ANN\NetworkTrainer\AutoencoderTrainer.cs" />
     <Compile Include="ANN\NeuralNetwork.cs" />
     <Compile Include="ANN\NeuralNetworkBuilder.cs" />
+    <Compile Include="ANN\Optimizers\Adam.cs" />
+    <Compile Include="ANN\Optimizers\VelocityGD.cs" />
     <Compile Include="ANN\Optimizers\SGD.cs" />
     <Compile Include="ANN\WeightInitializers\UniformWeightInitializer.cs" />
     <Compile Include="CLEvent.cs" />
     <Compile Include="Device.cs" />
     <Compile Include="IGPUMathObject.cs" />
     <Compile Include="Kernel.cs" />
+    <Compile Include="Tools\ImageManipulation.cs" />
+    <Compile Include="Tools\LearningManager.cs" />
+    <Compile Include="Tools\LearningProgressForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Tools\LearningProgressForm.Designer.cs">
+      <DependentUpon>LearningProgressForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Matrix.cs" />
     <Compile Include="Memory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RandomExtn.cs" />
+    <Compile Include="Tools\NRandom.cs" />
     <Compile Include="Vector.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Kernels\gan_gen_crossentropy_loss_deriv.cl">
+    <None Include="ANN\Kernels\CL\error_maxpool.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\fwd_maxpool.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\conv_ismall.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\conv_ksmall.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\conv.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\uniform_init.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\loss.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\activ.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\fmop.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\gemv.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\inner_prod.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Kernels\binary_cross_entropy_deriv.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Kernels\conv_bkwd_small.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Kernels\conv_bkwd.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Kernels\conv_bkwd_err_small.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Kernels\conv_bkwd_err.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Kernels\conv_fwd_small.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Kernels\gmm.cl">
@@ -109,37 +184,16 @@
     <None Include="Kernels\mv_madd_act.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Kernels\mv_madd_1.cl">
+    <None Include="Kernels\conv_fwd.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Kernels\mv_madd_0.cl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Kernels\gan_disc_crossentropy_loss_deriv.cl">
+    <None Include="Kernels\binary_cross_entropy.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Kernels\quadratic_loss_deriv.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Kernels\leaky_relu.cl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Kernels\leaky_relu_deriv.cl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Kernels\tanh_act.cl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Kernels\sigmoid.cl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Kernels\tanh_deriv.cl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Kernels\sigmoid_deriv.cl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Kernels\relu_deriv.cl">
+    <None Include="Kernels\tmv_mmult_sgl.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Kernels\tmv_mmult_act.cl">
@@ -148,16 +202,22 @@
     <None Include="Kernels\tmv_mmult.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="Kernels\vc_add.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="Kernels\vv_mmult.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Kernels\m_msub.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Kernels\relu.cl">
+    <None Include="Kernels\quadratic_loss.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="Kernels\quadratic_loss.cl">
+    <None Include="Kernels\vc_mult.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Kernels\v_act.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Kernels\v_div.cl">
@@ -167,6 +227,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Kernels\v_hadamard_act.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="Kernels\v_msub_self.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Kernels\v_msub.cl">
@@ -180,6 +243,11 @@
     </None>
     <None Include="OpenTK.dll.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Tools\LearningProgressForm.resx">
+      <DependentUpon>LearningProgressForm.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

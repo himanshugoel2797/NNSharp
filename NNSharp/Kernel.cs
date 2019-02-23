@@ -11,37 +11,35 @@ namespace NNSharp
     public class Kernel
     {
         internal OpenCL.Net.Kernel kern;
-        internal uint wpt;
+        private CLExtensions.KernelArgChain chain;
+        private bool reset = true;
 
-        public KernelArgumentChain SetArgument<T>(T val) where T : struct, IComparable
+        public void Reset()
         {
-            return new KernelArgumentChain(kern.SetKernelArg(val));
+            reset = true;
         }
 
-        public KernelArgumentChain SetArgumentMemory(Memory val)
+        public Kernel SetArgument<T>(T val) where T : struct, IComparable
         {
-            return new KernelArgumentChain(kern.SetKernelArg((IMem)val.buf));
-        }
-    }
-
-    public class KernelArgumentChain
-    {
-        private CLExtensions.KernelArgChain argChain;
-
-        internal KernelArgumentChain(CLExtensions.KernelArgChain argChain)
-        {
-            this.argChain = argChain;
-        }
-
-        public KernelArgumentChain SetArgument<T>(T val) where T : struct, IComparable
-        {
-            argChain = argChain.SetKernelArg(val);
+            if (reset)
+            {
+                chain = kern.SetKernelArg(val);
+                reset = false;
+            }
+            else
+                chain = chain.SetKernelArg(val);
             return this;
         }
 
-        public KernelArgumentChain SetArgumentMemory(Memory val)
+        public Kernel SetArgumentMemory(Memory val)
         {
-            argChain = argChain.SetKernelArg((IMem)val.buf);
+            if (reset)
+            {
+                chain = kern.SetKernelArg((IMem)val.buf);
+                reset = false;
+            }
+            else
+                chain = chain.SetKernelArg((IMem)val.buf);
             return this;
         }
     }

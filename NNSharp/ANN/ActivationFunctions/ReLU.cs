@@ -9,9 +9,16 @@ namespace NNSharp.ANN.ActivationFunctions
     [Serializable]
     public class ReLU : ActivationFunctionBase
     {
-        public ReLU() : base("const float activ_res = isgreater(res, 0) * res;", "const float activ_res = isgreater(res, 0);")
-        {
+        public ReLU() : base("relu", "relu_deriv") {}
 
+        protected override string ActivationFunc()
+        {
+            return "activ_res = isgreater(res, 0) * res;";
+        }
+
+        protected override string DerivActivationFunc()
+        {
+            return "activ_res = isgreater(res, 0);";
         }
     }
 }

@@ -9,6 +9,16 @@ namespace NNSharp.ANN.ActivationFunctions
     [Serializable]
     public class Tanh : ActivationFunctionBase
     {
-        public Tanh() : base("const float activ_res = tanh(res);", "const float activ_res = 1 - (tanh(res) * tanh(res));") { }
+        public Tanh() : base("tanh", "tanh_deriv") { }
+
+        protected override string ActivationFunc()
+        {
+            return "activ_res = tanh(res);";
+        }
+
+        protected override string DerivActivationFunc()
+        {
+            return "activ_res = 1 - (tanh(res) * tanh(res));";
+        }
     }
 }

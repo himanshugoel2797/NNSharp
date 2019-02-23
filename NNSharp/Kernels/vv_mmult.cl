@@ -5,5 +5,5 @@
     const int globalRow = get_global_id(0);
     const int globalCol = get_global_id(1);
     
-    C[globalCol * M + globalRow] = A[globalRow] * B[globalCol];
+    C[globalCol * M + globalRow] += A[globalRow] * B[globalCol];
 }

@@ -10,80 +10,64 @@ namespace NNSharp.ANN.Layers
     public class FCLayer : ILayer, IWeightInitializable
     {
         private int k;
-        private IActivationFunction activation;
-        private IOptimizer optimizer;
-
         private int input_sz;
-        private int output_sz;
 
-        private Matrix Weights;
-        private Vector Biases;
-        
-        [NonSerialized]
-        private Vector ResultMemory;
+        public Matrix Weights;
+        public Vector Biases;
 
         [NonSerialized]
-        private Vector ActivResultMemory;
-        
-        [NonSerialized]
-        private Vector CurDeltaMemory;
+        public Vector ResultMemory;
 
         [NonSerialized]
-        private Matrix WeightDelta;
+        public Vector CurDeltaMemory;
+
+        [NonSerialized]
+        public Matrix WeightDelta;
+
+        [NonSerialized]
+        private Vector BiasDelta;
 
         [NonSerialized]
         private Vector PrevInput;
 
-        public FCLayer(int k, IActivationFunction func)
+        public FCLayer(int k)
         {
             this.k = k;
-            activation = func;
         }
 
         public Vector Forward(Vector input)
         {
             PrevInput = input;
-            Matrix.MaddAct(Weights, input, Biases, ResultMemory, ActivResultMemory, activation.Activation());
-            return ActivResultMemory;
+            Matrix.Madd(Weights, input, Biases, ResultMemory);
+            return ResultMemory;
         }
 
-        public void Learn()
+        public void Learn(IOptimizer optimizer)
         {
-            //Error(input, prev_delta, prev_w, out cur_delta, out cur_w);
-            optimizer.Optimize(Weights, Biases, WeightDelta, CurDeltaMemory);
+            optimizer.Optimize(Weights, WeightDelta);
+            optimizer.Optimize(Biases, BiasDelta);
         }
 
-        public void Error(Vector input, Vector prev_delta, Matrix prev_w, out Vector cur_delta, out Matrix cur_w)
+        public void Reset()
         {
-            cur_w = Weights;
+            //Clear the biases and deltas
+            Matrix.Mult(WeightDelta, 0);
+            Vector.Mult(BiasDelta, 0);
+        }
+
+        public Vector Error(Vector prev_delta, bool update_cur)
+        {
+            if (update_cur)
+            {
+                //Compute the current weights using prev_delta as the error
+                Matrix.MatrixProduct(prev_delta, PrevInput, WeightDelta);
+                Vector.Add(prev_delta, BiasDelta);
+            }
+
+            //Compute the error to propagate to the following layer
+            Matrix.TMmult(Weights, prev_delta, CurDeltaMemory);
             
-            if (prev_w == null)
-            {
-                Vector.HadamardAct(prev_delta, ResultMemory, CurDeltaMemory, activation.DerivActivation());
-                cur_delta = CurDeltaMemory;
-            }
-            else
-            {
-                Matrix.TMmultAct(prev_w, prev_delta, ResultMemory, CurDeltaMemory, activation.DerivActivation());
-                cur_delta = CurDeltaMemory;
-            }
-
-            Matrix.MatrixProduct(cur_delta, PrevInput, WeightDelta);
-
-            if (prev_w != null && float.IsNaN(prev_w.Read()[0]))
-                throw new Exception();
-
-            if (float.IsNaN(prev_delta.Read()[0]))
-                throw new Exception();
-
-            if (float.IsNaN(ResultMemory.Read()[0]))
-                throw new Exception();
-
-            if (float.IsNaN(CurDeltaMemory.Read()[0]))
-                throw new Exception();
-
-            if (float.IsNaN(WeightDelta.Read()[0]))
-                throw new Exception();
+            return CurDeltaMemory;
         }
 
         public int GetOutputSize(int input)
@@ -94,14 +78,14 @@ namespace NNSharp.ANN.Layers
         public void SetInputSize(int sz)
         {
             input_sz = sz;
-            output_sz = GetOutputSize(sz);
 
             if (Weights == null) Weights = new Matrix(sz, k, MemoryFlags.ReadWrite, false);
-            WeightDelta = new Matrix(sz, k, MemoryFlags.ReadWrite, false);
             if (Biases == null) Biases = new Vector(k, MemoryFlags.ReadWrite, false);
+
+            BiasDelta = new Vector(k, MemoryFlags.ReadWrite, false);
+            WeightDelta = new Matrix(sz, k, MemoryFlags.ReadWrite, false);
             ResultMemory = new Vector(k, MemoryFlags.ReadWrite, false);
-            ActivResultMemory = new Vector(k, MemoryFlags.ReadWrite, false);
-            CurDeltaMemory = new Vector(k, MemoryFlags.ReadWrite, false);
+            CurDeltaMemory = new Vector(sz, MemoryFlags.ReadWrite, false);
         }
 
         public void SetWeights(IWeightInitializer weightInitializer)
@@ -112,25 +96,17 @@ namespace NNSharp.ANN.Layers
             for (int j = 0; j < Weights.Width; j++)
             {
                 for (int i = 0; i < Weights.Height; i++)
-                    m_ws[i] = weightInitializer.GetWeight(Weights.Width, Weights.Height);
+                    m_ws[i] = (float)weightInitializer.GetWeight(Weights.Width, Weights.Height); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
 
                 Weights.Write(m_ws, j * Weights.Height);
             }
 
-            for (int i = 0; i < b_ws.Length; i++)
-                b_ws[i] = weightInitializer.GetBias();
-            
+            Parallel.For(0, b_ws.Length, (i) =>
+           {
+               b_ws[i] = weightInitializer.GetBias();
+           });
+
             Biases.Write(b_ws);
-        }
-
-        public void SetOptimizer(IOptimizer opt)
-        {
-            optimizer = opt;
-        }
-
-        public IOptimizer GetOptimizer()
-        {
-            return optimizer;
         }
     }
 }

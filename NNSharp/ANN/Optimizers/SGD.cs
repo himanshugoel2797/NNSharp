@@ -15,15 +15,24 @@ namespace NNSharp.ANN.Optimizers
         {
         }
 
-        public void Optimize(Matrix w, Vector b, Matrix nabla_w, Vector nabla_b)
+        public void Optimize(Matrix w, Matrix nabla_w)
         {
-            Vector.MSub(nabla_b, b, r, b);
-            Matrix.MSub(nabla_w, w, r, w);
+            Matrix.MSubSelf(nabla_w, w, r);
+        }
+
+        public void Optimize(Vector b, Vector nabla_b)
+        {
+            Vector.MSubSelf(nabla_b, b, r);
         }
 
         public void SetLearningRate(float v)
         {
             r = v;
+        }
+
+        public void Update(float curError)
+        {
+
         }
     }
 }

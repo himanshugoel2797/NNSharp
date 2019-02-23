@@ -1,4 +1,5 @@
-﻿using OpenCL.Net;
+﻿using NNSharp.ANN.Kernels;
+using OpenCL.Net;
 using OpenCL.Net.Extensions;
 using System;
 using System.Collections.Generic;
@@ -14,58 +15,127 @@ namespace NNSharp
     {
         public int Length { get; private set; }
 
+#if GPU
         internal Memory memory;
-        
+#elif CPU
+        internal float[] memory;
+#endif
+
         public Vector(int len, MemoryFlags flags, bool zero)
         {
             Length = len;
+#if GPU
             memory = Device.GetDevice().AllocateMemory(len, flags, zero);
+#elif CPU
+            memory = new float[len];
+#endif
         }
-        
+
         public void Write(float[] data)
         {
+#if GPU
             var dev = Device.GetDevice();
             dev.Write(memory, data);
+#elif CPU
+            Array.Copy(data, memory, data.Length);
+#endif
         }
 
         public void Write(float[] data, int offset)
         {
+#if GPU
             var dev = Device.GetDevice();
             dev.Write(memory, data, offset);
+#elif CPU
+            Array.Copy(data, 0, memory, offset, data.Length);
+#endif
         }
 
         public void Read(float[] data)
         {
+#if GPU
             var dev = Device.GetDevice();
             dev.Read(memory, data);
+#elif CPU
+            Array.Copy(memory, data, data.Length);
+#endif
         }
 
         public float[] Read()
         {
+#if GPU
             var data = new float[Length];
             var dev = Device.GetDevice();
             dev.Read(memory, data);
             return data;
+#elif CPU
+            return memory;
+#endif
         }
 
-        public static void Hadamard(Vector a, Vector b, Vector c)
+#if CPU
+        internal static float Activ(string activ, float res)
         {
-            if (a.Length != b.Length)
-                throw new ArgumentException();
-
-            if (a.Length != c.Length)
-                throw new ArgumentException();
-
-            var dev = Device.GetDevice();
-
-            var optWPT = Device.OptimalWPT(a.Length);
-            var optTS = Device.OptimalTS("v_hadamard", a.Length, false, true);
-            dev["v_hadamard", optWPT, optTS].SetArgumentMemory(a.memory)
-                             .SetArgumentMemory(b.memory)
-                             .SetArgumentMemory(c.memory);
-
-            dev.Dispatch(dev["v_hadamard", optWPT, optTS], new uint[] { (uint)a.Length / optWPT, (uint)1 }, new uint[] { optTS, 1 });
+            float activ_res = 0;
+            switch (activ)
+            {
+                case "lrelu":
+                    {
+                        if (res < 0)
+                            return res * ANN.ActivationFunctions.LeakyReLU.Alpha;
+                        else
+                            return res;
+                    }
+                    break;
+                case "lrelu_deriv":
+                    {
+                        if (res < 0)
+                            return ANN.ActivationFunctions.LeakyReLU.Alpha;
+                        else
+                            return 1;
+                    }
+                    break;
+                case "relu":
+                    {
+                        if (res < 0)
+                            return 0;
+                        else
+                            return res;
+                    }
+                    break;
+                case "relu_deriv":
+                    {
+                        if (res < 0)
+                            return 0;
+                        else
+                            return 1;
+                    }
+                    break;
+                case "sigmoid":
+                    {
+                        return (float)(1.0d / (1.0d + Math.Exp(-res)));
+                    }
+                    break;
+                case "sigmoid_deriv":
+                    {
+                        var tmp = (1.0d / (1.0d + Math.Exp(-res)));
+                        return (float)(tmp * (1 - tmp));
+                    }
+                case "tanh":
+                    {
+                        return (float)(Math.Tanh(res));
+                    }
+                    break;
+                case "tanh_deriv":
+                    {
+                        var tmp = (float)(Math.Tanh(res));
+                        return (1 - tmp * tmp);
+                    }
+                    break;
+            }
+            return activ_res;
         }
+#endif
 
         public static void HadamardAct(Vector a, Vector b, Vector c, string activ)
         {
@@ -75,32 +145,97 @@ namespace NNSharp
             if (a.Length != c.Length)
                 throw new ArgumentException();
 
-            var dev = Device.GetDevice();
-            dev.LoadKernel("v_hadamard", activ);
-            var optWPT = Device.OptimalWPT(a.Length);
-            var optTS = Device.OptimalTS("v_hadamard_" + Math.Abs(activ.GetHashCode()), a.Length, false, true);
-            dev["v_hadamard_" + Math.Abs(activ.GetHashCode()), optWPT, optTS].SetArgumentMemory(a.memory)
-                             .SetArgumentMemory(b.memory)
-                             .SetArgumentMemory(c.memory);
-
-            dev.Dispatch(dev["v_hadamard_" + Math.Abs(activ.GetHashCode()), optWPT, optTS], new uint[] { (uint)a.Length / optWPT, (uint)1 }, new uint[] { optTS, 1 });
+#if GPU
+            KernelManager.HadamardActiv(a, b, c, activ);
+#elif CPU
+            Parallel.For(0, c.memory.Length, (i) =>
+            {
+                c.memory[i] = a.memory[i] * Activ(activ, b.memory[i]);
+            });
+            /*unsafe
+            {
+                fixed (float* a_p = a.memory)
+                fixed (float* b_p = b.memory)
+                fixed (float* c_p = c.memory)
+                {
+                    for (int i = 0; i < c.Length; i++)
+                        c_p[i] = a_p[i] * Activ(activ, b_p[i]);
+                }
+            }*/
+#endif
         }
 
-        public static void MSub(Vector a, Vector b, float rate, Vector c)
+        public static void Activation(Vector a, Vector b, string activ)
         {
             if (a.Length != b.Length)
                 throw new ArgumentException();
 
-            var dev = Device.GetDevice();
+#if GPU
+            KernelManager.Activ(a, b, activ);
+#elif CPU
+            Parallel.For(0, b.memory.Length, (i) =>
+            {
+                b.memory[i] = Activ(activ, a.memory[i]);
+            });
+            /*unsafe
+            {
+                fixed (float* a_p = a.memory)
+                fixed (float* b_p = b.memory)
+                {
+                    for (int i = 0; i < b.Length; i++)
+                        b_p[i] = Activ(activ, a_p[i]);
+                }
+            }*/
+#endif
+        }
 
-            var optWPT = Device.OptimalWPT(a.Length);
-            var optTS = Device.OptimalTS("v_msub", a.Length, false, true);
-            dev["v_msub", optWPT, optTS].SetArgument(rate)
-                           .SetArgumentMemory(a.memory)
-                           .SetArgumentMemory(b.memory)
-                           .SetArgumentMemory(c.memory);
+        public static void MSubSelf(Vector a, Vector b, float rate)
+        {
+            if (a.Length != b.Length)
+                throw new ArgumentException();
 
-            dev.Dispatch(dev["v_msub", optWPT, optTS], new uint[] { (uint)a.Length / optWPT, 1 }, new uint[] { optTS, 1 });
+#if GPU
+            //B = B - A * rate
+            KernelManager.Fmop(a, -rate, b, 1);
+#elif CPU
+            //Parallel.For(0, b.memory.Length, (i) => b.memory[i] = b.memory[i] - a.memory[i] * rate);
+            unsafe
+            {
+                fixed (float* a_p = a.memory)
+                fixed (float* b_p = b.memory)
+                {
+                    for (int i = 0; i < b.Length; i++)
+                        b_p[i] = b_p[i] - a_p[i] * rate;
+                }
+            }
+#endif
+        }
+
+        public static void Mult(Vector a, float rate)
+        {
+
+#if GPU
+            KernelManager.Fmop(a, 0, a, rate);
+#elif CPU
+            if (rate == 1)
+                return;
+
+            if (rate == 0)
+            {
+                Array.Clear(a.memory, 0, a.memory.Length);
+                return;
+            }
+            //Parallel.For(0, a.memory.Length, (i) => a.memory[i] *= rate);
+
+            unsafe
+            {
+                fixed (float* a_p = a.memory)
+                {
+                    for (int i = 0; i < a.Length; i++)
+                        a_p[i] *= rate;
+                }
+            }
+#endif
         }
 
         public static void Add(Vector a, Vector b)
@@ -108,33 +243,30 @@ namespace NNSharp
             if (a.Length != b.Length)
                 throw new ArgumentException();
 
-            var dev = Device.GetDevice();
-
-            var optWPT = Device.OptimalWPT(a.Length);
-            var optTS = Device.OptimalTS("v_add", a.Length, false, true);
-            dev["v_add", optWPT, optTS].SetArgumentMemory(a.memory)
-                         .SetArgumentMemory(b.memory);
-
-            dev.Dispatch(dev["v_add", optWPT, optTS], new uint[] { (uint)a.Length / optWPT, 1 }, new uint[] { optTS, 1 });
+#if GPU
+            KernelManager.Fmop(b, 1, a, 1);
+#elif CPU
+            //Parallel.For(0, b.memory.Length, (i) => b.memory[i] += a.memory[i]);
+            unsafe
+            {
+                fixed (float* a_p = a.memory)
+                fixed (float* b_p = b.memory)
+                {
+                    for (int i = 0; i < a.Length; i++)
+                        a_p[i] += b_p[i];
+                }
+            }
+#endif
         }
-
-        public static void Divide(float a, Vector b)
-        {
-            var dev = Device.GetDevice();
-
-            var optWPT = Device.OptimalWPT(b.Length);
-            var optTS = Device.OptimalTS("v_div", b.Length, false, true);
-            dev["v_div", optWPT, optTS].SetArgument(a)
-                         .SetArgumentMemory(b.memory);
-
-            dev.Dispatch(dev["v_div", optWPT, optTS], new uint[] { (uint)b.Length / optWPT, 1 }, new uint[] { optTS, 1 });
-        }
-
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
+#if GPU
             var mData = new float[Length];
             Read(mData);
+#elif CPU
+            var mData = memory;
+#endif
             info.AddValue("data", mData, mData.GetType());
             info.AddValue("length", Length);
         }
@@ -144,10 +276,14 @@ namespace NNSharp
             Length = info.GetInt32("length");
 
             var mData = (float[])info.GetValue("data", typeof(float[]));
+#if GPU
             var dev = Device.GetDevice();
 
             memory = dev.AllocateMemory(Length, MemoryFlags.ReadWrite, false);
             Write(mData);
+#elif CPU
+            memory = mData;
+#endif
         }
 
         #region IDisposable Support
@@ -164,8 +300,12 @@ namespace NNSharp
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
+#if GPU
                 memory.Dispose();
 
+#elif CPU
+                memory = null;
+#endif
                 disposedValue = true;
             }
         }

@@ -9,9 +9,18 @@ namespace NNSharp.ANN.ActivationFunctions
     [Serializable]
     public class LeakyReLU : ActivationFunctionBase
     {
-        public LeakyReLU() : base("const float activ_res = isgreater(res, 0) * res + isless(res, 0) * 0.01f * res;", "const float activ_res = isgreater(res, 0) + isless(res, 0) * 0.01f;")
-        {
+        public const float Alpha = 0.3f;
 
+        public LeakyReLU() : base("lrelu", "lrelu_deriv") {}
+
+        protected override string ActivationFunc()
+        {
+            return "activ_res = isgreater(res, 0) * res + isless(res, 0) * 0.01f * res;";
+        }
+
+        protected override string DerivActivationFunc()
+        {
+            return "activ_res = isgreater(res, 0) + isless(res, 0) * 0.01f;";
         }
     }
 }
