@@ -6,12 +6,25 @@ using System.Threading.Tasks;
 
 namespace NNSharp.ANN.Layers
 {
+    [Serializable]
     public class PoolingLayer : ICNNLayer
     {
         private int stride, filter_side, input_depth, input_sz, output_sz;
-        private Vector CurOutput, PoolCache, BackwardError;
 
-        private Kernel fwd_layer, error_layer;
+        [NonSerialized]
+        private Vector CurOutput;
+
+        [NonSerialized]
+        private Vector PoolCache;
+
+        [NonSerialized]
+        private Vector BackwardError;
+
+        [NonSerialized]
+        private Kernel fwd_layer;
+        
+        [NonSerialized]
+        private Kernel error_layer;
 
         public PoolingLayer(int stride, int filter_side, int inputDepth)
         {

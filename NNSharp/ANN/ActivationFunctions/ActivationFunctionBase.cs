@@ -9,34 +9,21 @@ namespace NNSharp.ANN.ActivationFunctions
     [Serializable]
     public abstract class ActivationFunctionBase : IActivationFunction
     {
-        private string func, func_deriv;
-
-
-        public ActivationFunctionBase(string func, string func_deriv)
+        public ActivationFunctionBase()
         {
-            this.func = func;
-            this.func_deriv = func_deriv;
         }
 
-        protected abstract string ActivationFunc();
-        protected abstract string DerivActivationFunc();
+        protected abstract ActivationFunctionInfo ActivationFunc();
+        protected abstract ActivationFunctionInfo DerivActivationFunc();
 
-        public string Activation()
+        public ActivationFunctionInfo Activation()
         {
-#if CPU
-            return func;
-#elif GPU
             return ActivationFunc();
-#endif
         }
 
-        public string DerivActivation()
+        public ActivationFunctionInfo DerivActivation()
         {
-#if CPU
-            return func_deriv;
-#elif GPU
             return DerivActivationFunc();
-#endif
         }
     }
 }

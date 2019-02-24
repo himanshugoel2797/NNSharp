@@ -89,6 +89,11 @@ namespace NNSharp.ANN
         public NeuralNetworkBuilder AddActivation<T>() where T : IActivationFunction, new()
         {
             var act_func = new T();
+            return AddActivation(act_func);
+        }
+
+        public NeuralNetworkBuilder AddActivation(IActivationFunction act_func)
+        {
             var act_layer = new ActivationLayer(act_func);
             return Add(act_layer);
         }

@@ -34,7 +34,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x64\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;CPU</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;GPU</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
@@ -73,9 +73,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ANN\ActivationFunctionInfo.cs" />
     <Compile Include="ANN\ActivationFunctions\ActivationFunctionBase.cs" />
     <Compile Include="ANN\ActivationFunctions\LeakyReLU.cs" />
-    <Compile Include="ANN\ActivationFunctions\Softmax.cs" />
     <Compile Include="ANN\ActivationFunctions\Tanh.cs" />
     <Compile Include="ANN\ActivationFunctions\Sigmoid.cs" />
     <Compile Include="ANN\ActivationFunctions\ReLU.cs" />

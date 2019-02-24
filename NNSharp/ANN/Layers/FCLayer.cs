@@ -45,8 +45,8 @@ namespace NNSharp.ANN.Layers
         public void Learn(IOptimizer optimizer)
         {
             optimizer.RegisterLayer(this, 1, input_sz, k, 1, k);
-            optimizer.Optimize(this, 1, Weights, WeightDelta);
-            optimizer.Optimize(this, 1, Biases, BiasDelta);
+            optimizer.Optimize(this, 0, Weights, WeightDelta);
+            optimizer.Optimize(this, 0, Biases, BiasDelta);
         }
 
         public void Reset()
@@ -67,7 +67,7 @@ namespace NNSharp.ANN.Layers
 
             //Compute the error to propagate to the following layer
             Matrix.TMmult(Weights, prev_delta, CurDeltaMemory);
-            
+
             return CurDeltaMemory;
         }
 
@@ -94,13 +94,15 @@ namespace NNSharp.ANN.Layers
             float[] m_ws = new float[Weights.Height];
             float[] b_ws = new float[Biases.Length];
 
-            for (int j = 0; j < Weights.Width; j++)
+            //for (int j = 0; j < Weights.Width; j++)
+            Parallel.For(0, Weights.Width, (j) =>
             {
                 for (int i = 0; i < Weights.Height; i++)
                     m_ws[i] = (float)weightInitializer.GetWeight(Weights.Width, Weights.Height); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
 
                 Weights.Write(m_ws, j * Weights.Height);
             }
+            );
 
             Parallel.For(0, b_ws.Length, (i) =>
            {

@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace NNSharp.ANN
 {
-    public interface IActivationFunction
+    public class ActivationFunctionInfo
     {
-        ActivationFunctionInfo Activation();
-        ActivationFunctionInfo DerivActivation();
+        public Func<float, float> CPUFunction { get; set; }
+        public string GPUFunction { get; set; }
     }
 }

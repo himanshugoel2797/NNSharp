@@ -137,7 +137,7 @@ namespace NNSharp
         }
 #endif
 
-        public static void HadamardAct(Vector a, Vector b, Vector c, string activ)
+        public static void HadamardAct(Vector a, Vector b, Vector c, ANN.ActivationFunctionInfo activ)
         {
             if (a.Length != b.Length)
                 throw new ArgumentException();
@@ -165,7 +165,7 @@ namespace NNSharp
 #endif
         }
 
-        public static void Activation(Vector a, Vector b, string activ)
+        public static void Activation(Vector a, Vector b, ANN.ActivationFunctionInfo activ)
         {
             if (a.Length != b.Length)
                 throw new ArgumentException();

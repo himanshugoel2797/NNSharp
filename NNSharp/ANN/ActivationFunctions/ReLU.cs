@@ -7,18 +7,8 @@ using System.Threading.Tasks;
 namespace NNSharp.ANN.ActivationFunctions
 {
     [Serializable]
-    public class ReLU : ActivationFunctionBase
+    public class ReLU : LeakyReLU
     {
-        public ReLU() : base("relu", "relu_deriv") {}
-
-        protected override string ActivationFunc()
-        {
-            return "activ_res = isgreater(res, 0) * res;";
-        }
-
-        protected override string DerivActivationFunc()
-        {
-            return "activ_res = isgreater(res, 0);";
-        }
+        public ReLU() : base(0) { }
     }
 }

@@ -274,8 +274,10 @@ namespace NNSharp.ANN.Kernels
         #endregion
 
         #region Activations
-        public static void Activ(Vector input, Vector output, string func)
+        public static void Activ(Vector input, Vector output, ActivationFunctionInfo func_info)
         {
+            string func = func_info.GPUFunction;
+
             if (!activ_kernels.ContainsKey(func))
             {
                 activ_kernels[func] = new Kernel[MaxWPT];
@@ -295,8 +297,10 @@ namespace NNSharp.ANN.Kernels
             device.Dispatch(activ_kernels[func][len], new uint[] { (uint)(output.Length / (1 << len) + 1), 1 }, null);
         }
 
-        public static void HadamardActiv(Vector a, Vector input, Vector output, string func)
+        public static void HadamardActiv(Vector a, Vector input, Vector output, ActivationFunctionInfo func_info)
         {
+            string func = func_info.GPUFunction;
+
             if (!activ_hadamard_kernels.ContainsKey(func))
             {
                 activ_hadamard_kernels[func] = new Kernel[MaxWPT];
