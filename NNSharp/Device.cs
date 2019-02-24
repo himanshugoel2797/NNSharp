@@ -51,10 +51,9 @@ namespace NNSharp
         {
             code = code.Replace("REPLACE_THIS", subs_name);
 
-            string errCode;
             Kernel kernel = new Kernel
             {
-                kern = env.Context.CompileKernelFromSource(code, kernelName, out err, out errCode, "-cl-unsafe-math-optimizations"),
+                kern = env.Context.CompileKernelFromSource(code, kernelName, out err, out string errCode, "-cl-unsafe-math-optimizations"),
             };
 
             if (errCode == "Success")
@@ -72,8 +71,10 @@ namespace NNSharp
 
         public Memory AllocateMemory(int len, MemoryFlags flags, bool zero)
         {
-            Memory m = new Memory();
-            m.buf = Cl.CreateBuffer(env.Context, (MemFlags)(int)flags, (IntPtr)(len * sizeof(float)), out var errCode);
+            Memory m = new Memory
+            {
+                buf = Cl.CreateBuffer(env.Context, (MemFlags)(int)flags, (IntPtr)(len * sizeof(float)), out var errCode)
+            };
             if (errCode != ErrorCode.Success)
                 throw new Exception(errCode.ToString());
             return m;

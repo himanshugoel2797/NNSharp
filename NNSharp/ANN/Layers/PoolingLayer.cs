@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NNSharp.ANN.NetworkBuilder;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,9 +8,13 @@ using System.Threading.Tasks;
 namespace NNSharp.ANN.Layers
 {
     [Serializable]
-    public class PoolingLayer : ICNNLayer
+    public class PoolingLayer : ILayer
     {
-        private int stride, filter_side, input_depth, input_sz, output_sz;
+        private readonly int stride;
+        private readonly int filter_side;
+        private int input_depth;
+        private int input_sz;
+        private int output_sz;
 
         [NonSerialized]
         private Vector CurOutput;
@@ -22,18 +27,17 @@ namespace NNSharp.ANN.Layers
 
         [NonSerialized]
         private Kernel fwd_layer;
-        
+
         [NonSerialized]
         private Kernel error_layer;
 
-        public PoolingLayer(int stride, int filter_side, int inputDepth)
+        public PoolingLayer(int stride, int filter_side)
         {
             this.stride = stride;
             this.filter_side = filter_side;
-            this.input_depth = inputDepth;
         }
 
-        public Vector Error(Vector prev_delta, bool update_cur)
+        public Vector[] Propagate(Vector[] prev_delta)
         {
             Vector.Mult(BackwardError, 0);
 #if GPU
@@ -49,7 +53,7 @@ namespace NNSharp.ANN.Layers
                 error_layer
                     .SetArgument(i * input_sz * input_sz)
                     .SetArgument(i * output_sz * output_sz)
-                    .SetArgumentMemory(prev_delta.memory)
+                    .SetArgumentMemory(prev_delta[0].memory)
                     .SetArgumentMemory(PoolCache.memory)
                     .SetArgumentMemory(BackwardError.memory);
 
@@ -65,17 +69,24 @@ namespace NNSharp.ANN.Layers
                                 int i_x = x * stride + (n0 - filter_side / 2) + filter_side / 2;
                                 int i_y = y * stride + (n1 - filter_side / 2) + filter_side / 2;
 
-                                BackwardError.memory[i * input_sz * input_sz + i_x * input_sz + i_y] += PoolCache.memory[i * input_sz * input_sz + i_x * input_sz + i_y] * prev_delta.memory[i * output_sz * output_sz + x * output_sz + y];
+                                BackwardError.memory[i * input_sz * input_sz + i_x * input_sz + i_y] += PoolCache.memory[i * input_sz * input_sz + i_x * input_sz + i_y] * prev_delta[0].memory[i * output_sz * output_sz + x * output_sz + y];
                             }
                     }
                 }
 #endif
             }
 
-            return BackwardError;
+            return new Vector[] { BackwardError };
         }
 
-        public Vector Forward(Vector input)
+        public Vector[] GetLastDelta()
+        {
+            return new Vector[] { BackwardError };
+        }
+
+        public void LayerError(Vector[] prev_delta) { }
+
+        public Vector[] Forward(Vector[] input)
         {
 #if GPU
             var dev = Device.GetDevice();
@@ -90,7 +101,7 @@ namespace NNSharp.ANN.Layers
                 fwd_layer
                 .SetArgument(i * input_sz * input_sz)
                 .SetArgument(i * output_sz * output_sz)
-                .SetArgumentMemory(input.memory)
+                .SetArgumentMemory(input[0].memory)
                 .SetArgumentMemory(PoolCache.memory)
                 .SetArgumentMemory(CurOutput.memory);
 
@@ -108,7 +119,7 @@ namespace NNSharp.ANN.Layers
                                 int i_x = x * stride + (n0 - filter_side / 2) + filter_side / 2;
                                 int i_y = y * stride + (n1 - filter_side / 2) + filter_side / 2;
 
-                                float i_val = input.memory[i * input_sz * input_sz + i_x * input_sz + i_y];
+                                float i_val = input[0].memory[i * input_sz * input_sz + i_x * input_sz + i_y];
 
                                 PoolCache.memory[i * input_sz * input_sz + i_x * input_sz + i_y] = 0;
                                 if (i_val > acc)
@@ -125,23 +136,7 @@ namespace NNSharp.ANN.Layers
 #endif
             }
 
-            return CurOutput;
-        }
-
-        public int GetFlatOutputSize()
-        {
-            return output_sz;
-        }
-
-        public int GetInputDepth()
-        {
-            return input_depth;
-        }
-
-        public int GetOutputSize(int input)
-        {
-            int output_sz = 1 + (input - filter_side) / stride;
-            return output_sz * output_sz * input_depth;
+            return new Vector[] { CurOutput };
         }
 
         public void Learn(IOptimizer opt)
@@ -149,18 +144,39 @@ namespace NNSharp.ANN.Layers
             //No parameters to learn
         }
 
-        public void Reset()
+        public void ResetLayerError()
         {
         }
 
-        public void SetInputSize(int sz)
+        #region Parameter Setup
+        public int GetOutputSize()
+        {
+            int output_sz = 1 + (input_sz - filter_side) / stride;
+            return output_sz;
+        }
+
+        public int GetOutputDepth()
+        {
+            return input_depth;
+        }
+
+        public void SetInputSize(int sz, int input_dpth)
         {
             input_sz = sz;
+            input_depth = input_dpth;
             output_sz = 1 + (sz - filter_side) / stride;
 
             CurOutput = new Vector(output_sz * output_sz * input_depth, MemoryFlags.ReadWrite, true);
             PoolCache = new Vector(input_sz * input_sz * input_depth, MemoryFlags.ReadWrite, true);
             BackwardError = new Vector(input_sz * input_sz * input_depth, MemoryFlags.ReadWrite, true);
         }
+        #endregion
+
+        #region Static Factory
+        public static LayerContainer Create(int stride, int filter_side)
+        {
+            return new LayerContainer(new PoolingLayer(stride, filter_side));
+        }
+        #endregion
     }
 }

@@ -10,7 +10,7 @@ namespace NNSharp.Tools
     {
         private Random rng;
         private ulong seed;
-        private object lock_obj;
+        private readonly object lock_obj;
 
         private const ulong mult = 6364136223846793005;
 
@@ -39,8 +39,8 @@ namespace NNSharp.Tools
             {
                 return rng.Next();
             }
-            seed = unchecked(seed * mult + 1);
-            return unchecked((int)(seed >> 33));
+            //seed = unchecked(seed * mult + 1);
+            //return unchecked((int)(seed >> 33));
         }
 
         public double NextDouble()
@@ -49,7 +49,7 @@ namespace NNSharp.Tools
             {
                 return rng.NextDouble();
             }
-            return unchecked((Next() % 2000000) + 1 - double.Epsilon) / 2000000 + double.Epsilon;
+            //return unchecked((Next() % 2000000) + 1 - double.Epsilon) / 2000000 + double.Epsilon;
         }
 
         public double NextGaussian(double mu = 0, double sigma = 1)

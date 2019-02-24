@@ -73,70 +73,6 @@ namespace NNSharp
 #endif
         }
 
-#if CPU
-        internal static float Activ(string activ, float res)
-        {
-            float activ_res = 0;
-            switch (activ)
-            {
-                case "lrelu":
-                    {
-                        if (res < 0)
-                            return res * ANN.ActivationFunctions.LeakyReLU.Alpha;
-                        else
-                            return res;
-                    }
-                    break;
-                case "lrelu_deriv":
-                    {
-                        if (res < 0)
-                            return ANN.ActivationFunctions.LeakyReLU.Alpha;
-                        else
-                            return 1;
-                    }
-                    break;
-                case "relu":
-                    {
-                        if (res < 0)
-                            return 0;
-                        else
-                            return res;
-                    }
-                    break;
-                case "relu_deriv":
-                    {
-                        if (res < 0)
-                            return 0;
-                        else
-                            return 1;
-                    }
-                    break;
-                case "sigmoid":
-                    {
-                        return (float)(1.0d / (1.0d + Math.Exp(-res)));
-                    }
-                    break;
-                case "sigmoid_deriv":
-                    {
-                        var tmp = (1.0d / (1.0d + Math.Exp(-res)));
-                        return (float)(tmp * (1 - tmp));
-                    }
-                case "tanh":
-                    {
-                        return (float)(Math.Tanh(res));
-                    }
-                    break;
-                case "tanh_deriv":
-                    {
-                        var tmp = (float)(Math.Tanh(res));
-                        return (1 - tmp * tmp);
-                    }
-                    break;
-            }
-            return activ_res;
-        }
-#endif
-
         public static void HadamardAct(Vector a, Vector b, Vector c, ANN.ActivationFunctionInfo activ)
         {
             if (a.Length != b.Length)
@@ -150,7 +86,7 @@ namespace NNSharp
 #elif CPU
             Parallel.For(0, c.memory.Length, (i) =>
             {
-                c.memory[i] = a.memory[i] * Activ(activ, b.memory[i]);
+                c.memory[i] = a.memory[i] * activ.CPUFunction(b.memory[i]);
             });
             /*unsafe
             {
@@ -175,7 +111,7 @@ namespace NNSharp
 #elif CPU
             Parallel.For(0, b.memory.Length, (i) =>
             {
-                b.memory[i] = Activ(activ, a.memory[i]);
+                b.memory[i] = activ.CPUFunction(a.memory[i]);
             });
             /*unsafe
             {

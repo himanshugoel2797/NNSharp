@@ -1,4 +1,5 @@
 ﻿using NNSharp.ANN.Kernels;
+using NNSharp.ANN.NetworkBuilder;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 namespace NNSharp.ANN.Layers
 {
     [Serializable]
-    public class ConvLayer : ICNNLayer, IWeightInitializable
+    public class ConvLayer : ILayer, IWeightInitializable
     {
         //Forward: Take an image as input and convolve it with the specified number of filters
         //Backward: Apply deconvolution to update the filters
@@ -33,36 +34,15 @@ namespace NNSharp.ANN.Layers
 
         const int SmallKernelRequirement = 400;
 
-#if GPU
-        [NonSerialized]
-        private Kernel bkwd;
-        [NonSerialized]
-        private Kernel bkwd_err;
-        [NonSerialized]
-        private Kernel fwd;
-
-        [NonSerialized]
-        private Kernel bkwd_s;
-        [NonSerialized]
-        private Kernel bkwd_err_s;
-        [NonSerialized]
-        private Kernel fwd_s;
-#endif
-
-        public ConvLayer()
+        public ConvLayer(int filter_side, int filter_cnt, int padding = 0, int stride = 1)
         {
-#if GPU
-            /*var dev = Device.GetDevice();
-            bkwd = dev.LoadKernel("conv_bkwd");
-            bkwd_err = dev.LoadKernel("conv_bkwd_err");
-            fwd = dev.LoadKernel("conv_fwd");
-            bkwd_s = dev.LoadKernel("conv_bkwd_small");
-            bkwd_err_s = dev.LoadKernel("conv_bkwd_err_small");
-            fwd_s = dev.LoadKernel("conv_fwd_small");*/
-#endif
+            filterSz = filter_side;
+            filterCnt = filter_cnt;
+            paddingSz = padding;
+            strideLen = stride;
         }
 
-        public void Reset()
+        public void ResetLayerError()
         {
             for (int i = 0; i < filterCnt; i++)
                 for (int j = 0; j < inputDepth; j++)
@@ -103,85 +83,8 @@ namespace NNSharp.ANN.Layers
             });
         }
 
-        public Vector Error(Vector prev_delta, bool update_cur)
+        public Vector[] Propagate(Vector[] prev_delta)
         {
-            if (update_cur)
-            {
-                //Vector.Add(BiasError, prev_delta);
-
-                //Filter weight errors = covolution of Input with prev_delta <- doesn't tell us about individual filters per input dimension -> For now, treat the error as the same for each filter per input dimension
-                for (int i = 0; i < filterCnt; i++)
-                {
-                    Vector.VectorSum(BiasError, i, prev_delta, i * outputSz * outputSz, outputSz);
-                    for (int j = 0; j < inputDepth; j++)
-                    {
-                        //convolution of input with prev_delta subportion for current filterCnt index
-
-                        //Perform convolution of input[inputSz * inputSz * j] from prev_delta[outputSz * outputSz * i] to get the error for WeightErrors[i][j]
-                        //M = inputSz
-                        //N = outputSz
-                        //K = filterSz
-                        //S = stride
-                        //OX = N / 2
-                        //OY = N / 2
-                        //OZ = i
-                        //OW = j
-                        //kern = prev_delta
-                        //i = input
-                        //o = WeightErrors[i][j]
-
-                        int padd = ((filterSz - 1) * strideLen - inputSz + outputSz) / 2;
-#if GPU
-                    /*
-                    var dev = Device.GetDevice();
-
-                    var kern_name = ((inputSz * inputSz <= SmallKernelRequirement) ? bkwd_err_s : bkwd_err);
-                    kern_name
-                                    .SetArgument(outputSz)
-                                    .SetArgument(inputSz)
-                                    .SetArgument(filterSz)
-                                    .SetArgument(strideLen)
-                                    .SetArgument(padd)
-                                    .SetArgument(outputSz / 2)
-                                    .SetArgument(outputSz / 2)
-                                    .SetArgument(i)
-                                    .SetArgument(j)
-                                    .SetArgumentMemory(PrevInput.memory)
-                                    .SetArgumentMemory(prev_delta.memory)
-                                    .SetArgumentMemory(WeightErrors[i][j].memory);
-
-                    dev.Dispatch(kern_name, new uint[] { (uint)(filterSz * filterSz), 1 }, null);*/
-
-                    KernelManager.Convolve(prev_delta, i * outputSz * outputSz, outputSz, PrevInput, j * inputSz * inputSz, inputSz, false, padd, strideLen, WeightErrors[i][j], 0, filterSz);
-#elif CPU
-                        //Parallel.For(0, filterSz, (y) =>
-                        /*for (int y = 0; y < filterSz; y++)
-                        {
-                            for (int x = 0; x < filterSz; x++)
-                                for (int y0 = 0; y0 < inputSz; y0++)
-                                    for (int x0 = 0; x0 < inputSz; x0++)
-                                    {
-                                        int i_x = x * strideLen + (x0 - inputSz / 2) + inputSz / 2 - padd;
-                                        int i_y = y * strideLen + (y0 - inputSz / 2) + inputSz / 2 - padd;
-
-                                        if (i_x >= 0 && i_y >= 0 && i_x < outputSz && i_y < outputSz)
-                                            WeightErrors[i][j].memory[(filterSz - 1 - y) * filterSz + (filterSz - 1 - x)] += PrevInput.memory[j * inputSz * inputSz + y0 * inputSz + x0] * prev_delta.memory[i * outputSz * outputSz + (i_y) * outputSz + (i_x)];
-                                    }
-                        }*///);
-                           //int oSz = (i - fSz + 2 * pSz) / strLen + 1;
-                           //oSz = filterSz
-                           //i = inputSz
-                           //fSz = outputSz
-                           //pSz = ??
-                           //strLen = strideLen
-                           //((filterSz - 1) * strideLen - inputSz + outputSz)/2
-
-                        Convolve(PrevInput.memory, false, j * inputSz * inputSz, inputSz, padd, strideLen, prev_delta.memory, true, i * outputSz * outputSz, outputSz, WeightErrors[i][j].memory, true, 0, filterSz);
-#endif
-                    }
-                }
-            }
-
             //cur_delta = BackwardDelta = Full convolution of prev_delta with 180 rotated filter <- sum from all filters in terms of filterCnt, but spread across inputDepth? 
 
             //Clear BackwardDelta
@@ -225,8 +128,8 @@ namespace NNSharp.ANN.Layers
                                     .SetArgumentMemory(BackwardDelta.memory);
 
                     dev.Dispatch(kern, new uint[] { (uint)(inputSz * inputSz), 1 }, null);*/
-                    KernelManager.Convolve(prev_delta, i * outputSz * outputSz, outputSz, Weights[i][j], 0, filterSz, true, padd, strideLen, BackwardDelta, j * inputSz * inputSz, inputSz);
-                     
+                    KernelManager.Convolve(prev_delta[0], i * outputSz * outputSz, outputSz, Weights[i][j], 0, filterSz, true, padd, strideLen, BackwardDelta, j * inputSz * inputSz, inputSz);
+
 #elif CPU
                     //Parallel.For(0, inputSz, (y) =>
                     /*for (int y = 0; y < inputSz; y++)
@@ -251,17 +154,97 @@ namespace NNSharp.ANN.Layers
                                 }
                     }*///);
                     //Convolve(Weights[i][j].memory, false, 0, filterSz, outputSz - 1, strideLen, prev_delta.memory, true, i * outputSz * outputSz, outputSz, BackwardDelta.memory, true, j * inputSz * inputSz, inputSz);
-                    Convolve(prev_delta.memory, false, i * outputSz * outputSz, outputSz, padd, strideLen, Weights[i][j].memory, true, 0, filterSz, BackwardDelta.memory, false, j * inputSz * inputSz, inputSz);
+                    Convolve(prev_delta[0].memory, false, i * outputSz * outputSz, outputSz, padd, strideLen, Weights[i][j].memory, true, 0, filterSz, BackwardDelta.memory, false, j * inputSz * inputSz, inputSz);
 #endif
                 }
             }
 
-            return BackwardDelta;
+            return new Vector[] { BackwardDelta };
         }
 
-        public Vector Forward(Vector input)
+        public Vector[] GetLastDelta()
         {
-            PrevInput = input;
+            return new Vector[] { BackwardDelta };
+        }
+
+        public void LayerError(Vector[] prev_delta)
+        {
+            //Filter weight errors = covolution of Input with prev_delta <- doesn't tell us about individual filters per input dimension -> For now, treat the error as the same for each filter per input dimension
+            for (int i = 0; i < filterCnt; i++)
+            {
+                Vector.VectorSum(BiasError, i, prev_delta[0], i * outputSz * outputSz, outputSz);
+                for (int j = 0; j < inputDepth; j++)
+                {
+                    //convolution of input with prev_delta subportion for current filterCnt index
+
+                    //Perform convolution of input[inputSz * inputSz * j] from prev_delta[outputSz * outputSz * i] to get the error for WeightErrors[i][j]
+                    //M = inputSz
+                    //N = outputSz
+                    //K = filterSz
+                    //S = stride
+                    //OX = N / 2
+                    //OY = N / 2
+                    //OZ = i
+                    //OW = j
+                    //kern = prev_delta
+                    //i = input
+                    //o = WeightErrors[i][j]
+
+                    int padd = ((filterSz - 1) * strideLen - inputSz + outputSz) / 2;
+#if GPU
+                    /*
+                    var dev = Device.GetDevice();
+
+                    var kern_name = ((inputSz * inputSz <= SmallKernelRequirement) ? bkwd_err_s : bkwd_err);
+                    kern_name
+                                    .SetArgument(outputSz)
+                                    .SetArgument(inputSz)
+                                    .SetArgument(filterSz)
+                                    .SetArgument(strideLen)
+                                    .SetArgument(padd)
+                                    .SetArgument(outputSz / 2)
+                                    .SetArgument(outputSz / 2)
+                                    .SetArgument(i)
+                                    .SetArgument(j)
+                                    .SetArgumentMemory(PrevInput.memory)
+                                    .SetArgumentMemory(prev_delta.memory)
+                                    .SetArgumentMemory(WeightErrors[i][j].memory);
+
+                    dev.Dispatch(kern_name, new uint[] { (uint)(filterSz * filterSz), 1 }, null);*/
+
+                    KernelManager.Convolve(prev_delta[0], i * outputSz * outputSz, outputSz, PrevInput, j * inputSz * inputSz, inputSz, false, padd, strideLen, WeightErrors[i][j], 0, filterSz);
+#elif CPU
+                        //Parallel.For(0, filterSz, (y) =>
+                        /*for (int y = 0; y < filterSz; y++)
+                        {
+                            for (int x = 0; x < filterSz; x++)
+                                for (int y0 = 0; y0 < inputSz; y0++)
+                                    for (int x0 = 0; x0 < inputSz; x0++)
+                                    {
+                                        int i_x = x * strideLen + (x0 - inputSz / 2) + inputSz / 2 - padd;
+                                        int i_y = y * strideLen + (y0 - inputSz / 2) + inputSz / 2 - padd;
+
+                                        if (i_x >= 0 && i_y >= 0 && i_x < outputSz && i_y < outputSz)
+                                            WeightErrors[i][j].memory[(filterSz - 1 - y) * filterSz + (filterSz - 1 - x)] += PrevInput.memory[j * inputSz * inputSz + y0 * inputSz + x0] * prev_delta.memory[i * outputSz * outputSz + (i_y) * outputSz + (i_x)];
+                                    }
+                        }*///);
+                           //int oSz = (i - fSz + 2 * pSz) / strLen + 1;
+                           //oSz = filterSz
+                           //i = inputSz
+                           //fSz = outputSz
+                           //pSz = ??
+                           //strLen = strideLen
+                           //((filterSz - 1) * strideLen - inputSz + outputSz)/2
+
+                        Convolve(PrevInput.memory, false, j * inputSz * inputSz, inputSz, padd, strideLen, prev_delta[0].memory, true, i * outputSz * outputSz, outputSz, WeightErrors[i][j].memory, true, 0, filterSz);
+#endif
+                }
+            }
+        }
+
+        public Vector[] Forward(Vector[] input)
+        {
+            PrevInput = input[0];
 
             //Clear the output vector
             Vector.Mult(Output, 0);
@@ -288,7 +271,7 @@ namespace NNSharp.ANN.Layers
                     //o = Output
 
 #if GPU
-                    KernelManager.Convolve(input, j * inputSz * inputSz, inputSz, Weights[i][j], 0, filterSz, true, paddingSz, strideLen, Output, i * outputSz * outputSz, outputSz);
+                    KernelManager.Convolve(input[0], j * inputSz * inputSz, inputSz, Weights[i][j], 0, filterSz, true, paddingSz, strideLen, Output, i * outputSz * outputSz, outputSz);
                     /*var dev = Device.GetDevice();
                     var kern = ((filterSz * filterSz <= SmallKernelRequirement) ? fwd_s : fwd);
                     kern
@@ -341,20 +324,14 @@ namespace NNSharp.ANN.Layers
                         }
                         Console.WriteLine("]");
                     }*/
-                    Convolve(input.memory, false, j * inputSz * inputSz, inputSz, paddingSz, strideLen, Weights[i][j].memory, false, 0, filterSz, Output.memory, false, i * outputSz * outputSz, outputSz);
+                    Convolve(input[0].memory, false, j * inputSz * inputSz, inputSz, paddingSz, strideLen, Weights[i][j].memory, false, 0, filterSz, Output.memory, false, i * outputSz * outputSz, outputSz);
 #endif
                 }
                 //Console.WriteLine("\n\n");
                 Vector.Add(Output, Bias, i);
             }
 
-            return Output;
-        }
-
-        public int GetOutputSize(int input)
-        {
-            int outputSz = (input - filterSz + 2 * paddingSz) / strideLen + 1;
-            return outputSz * outputSz * filterCnt;
+            return new Vector[] { Output };
         }
 
         public void Learn(IOptimizer optimizer)
@@ -373,44 +350,21 @@ namespace NNSharp.ANN.Layers
             optimizer.Optimize(this, 0, Bias, BiasError);
         }
 
-        public int GetFlatOutputSize()
+        #region Parameter Setup
+        public int GetOutputSize()
         {
             return outputSz;
         }
 
-        public void SetStrideLength(int stride)
+        public int GetOutputDepth()
         {
-            strideLen = stride;
+            return filterCnt;
         }
 
-        public void SetFilterSize(int filter)
+        public void SetInputSize(int input_side, int input_depth)
         {
-            filterSz = filter;
-        }
-
-        public void SetFilterCount(int filter)
-        {
-            filterCnt = filter;
-        }
-
-        public void SetPaddingSize(int padding)
-        {
-            paddingSz = padding;
-        }
-
-        public void SetInputDepth(int d)
-        {
-            inputDepth = d;
-        }
-
-        public int GetInputDepth()
-        {
-            return inputDepth;
-        }
-
-        public void SetInputSize(int sz)
-        {
-            inputSz = sz;
+            inputDepth = input_depth;
+            inputSz = input_side;
             outputSz = (inputSz - filterSz + 2 * paddingSz) / strideLen + 1;
 
             //Allocate memory for the filters
@@ -439,7 +393,9 @@ namespace NNSharp.ANN.Layers
 
             BackwardDelta = new Vector(inputSz * inputSz * inputDepth, MemoryFlags.ReadWrite, false);
         }
+        #endregion
 
+        #region IWeightInitializable
         public void SetWeights(IWeightInitializer weightInitializer)
         {
             float[] rng = new float[filterSz * filterSz];
@@ -459,5 +415,14 @@ namespace NNSharp.ANN.Layers
             }
             Bias.Write(rng_b);
         }
+        #endregion
+
+        #region Static Factory
+        public static LayerContainer Create(int filter_side, int filter_cnt, int padding = 0, int stride = 1)
+        {
+            var layer = new ConvLayer(filter_side, filter_cnt, padding, stride);
+            return new LayerContainer(layer);
+        }
+        #endregion
     }
 }

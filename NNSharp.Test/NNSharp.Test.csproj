@@ -81,23 +81,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Autoencoders\DeepAutoencoder.cs" />
     <Compile Include="Benchmarks\BenchmarkRunner.cs" />
-    <Compile Include="Benchmarks\ConvNetworkCheck.cs" />
-    <Compile Include="Benchmarks\MatrixBenchmarks.cs" />
-    <Compile Include="Benchmarks\VectorBenchmarks.cs" />
-    <Compile Include="Classifiers\MNIST\Dataset.cs" />
-    <Compile Include="Classifiers\TextClassifier.cs" />
-    <Compile Include="GANs\HeadlessDGAN.cs" />
-    <Compile Include="Benchmarks\DeepNetworkCheck.cs" />
-    <Compile Include="MathTests\Convolution2.cs" />
-    <Compile Include="MathTests\Convolution.cs" />
-    <Compile Include="OLD\AnimeDatasets.cs" />
-    <Compile Include="OLD\AnimeGAN.cs" />
-    <Compile Include="OLD\AnimeAutoencoder.cs" />
-    <Compile Include="Autoencoders\ConvAutoencoder.cs" />
-    <Compile Include="OLD\ConvolutionalAutoencoder.cs" />
-    <Compile Include="OLD\ConvolutionTest.cs" />
     <Compile Include="ITest.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -18,7 +18,9 @@ namespace NNSharp.ANN.Optimizers
             public Vector[] v_b;
         }
 
-        private float learning_rate, beta_1, beta_2;
+        private float learning_rate;
+        private readonly float beta_1;
+        private readonly float beta_2;
         private Dictionary<ILayer, AdamParams> layers;
 
         public Adam(float learning_rate = 0.001f, float beta_1 = 0.9f, float beta_2 = 0.999f)

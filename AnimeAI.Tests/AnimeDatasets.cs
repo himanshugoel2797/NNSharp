@@ -14,8 +14,8 @@ namespace AnimeAI.Tests
     {
         //const string TrainingDataPath = @"I:\Datasets\Lewds\Pictures";
         //const string TrainingDataPath_SMALL = @"I:\Datasets\Lewds\Pictures\small";
-        string TrainingDataPath = @"I:\Datasets\anime-faces\emilia_(re_zero)";
-        string TrainingDataPath_SMALL = @"I:\Datasets\anime-faces\emilia_small2";
+        readonly string TrainingDataPath = @"I:\Datasets\anime-faces\emilia_(re_zero)";
+        readonly string TrainingDataPath_SMALL = @"I:\Datasets\anime-faces\emilia_small2";
         //const string TrainingDataPath = @"I:\Datasets\anime-faces\combined";
         //const string TrainingDataPath_SMALL = @"I:\Datasets\anime-faces\combined_small";
         public List<string> TrainingFiles;

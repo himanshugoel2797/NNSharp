@@ -8,14 +8,19 @@ namespace NNSharp.ANN
 {
     public interface ILayer
     {
-        void SetInputSize(int sz);
+        Vector[] Forward(params Vector[] input);
 
-        int GetOutputSize(int input);
+        Vector[] Propagate(params Vector[] prev_delta);
+        Vector[] GetLastDelta();
+
+        void LayerError(params Vector[] prev_delta);
         void Learn(IOptimizer opt);
-        void Reset();
+        void ResetLayerError();
 
-        Vector Error(Vector prev_delta, bool update_cur);
-
-        Vector Forward(Vector input);
+        #region Parameter Setup
+        int GetOutputSize();
+        int GetOutputDepth();
+        void SetInputSize(int input_side, int input_depth);
+        #endregion
     }
 }
