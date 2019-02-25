@@ -31,15 +31,6 @@ namespace NNSharp.ANN.Optimizers
         {
             adam_kernels = new Dictionary<int, Kernel>();
         }
-#endif
-
-        public Adam(float learning_rate = 0.001f, float beta_1 = 0.9f, float beta_2 = 0.999f)
-        {
-            this.layers = new Dictionary<ILayer, AdamParams>();
-            this.learning_rate = learning_rate;
-            this.beta_1 = beta_1;
-            this.beta_2 = beta_2;
-        }
 
         private void Optimize(Memory m, Memory v, Memory nabla, Memory o, int o_len)
         {
@@ -64,6 +55,15 @@ namespace NNSharp.ANN.Optimizers
                 .SetArgumentMemory(o);
 
             dev.Dispatch(adam_kernels[len], new uint[] { (uint)(len / (1 << wpt) + 1), 1 }, null);
+        }
+#endif
+
+        public Adam(float learning_rate = 0.001f, float beta_1 = 0.9f, float beta_2 = 0.999f)
+        {
+            this.layers = new Dictionary<ILayer, AdamParams>();
+            this.learning_rate = learning_rate;
+            this.beta_1 = beta_1;
+            this.beta_2 = beta_2;
         }
 
         public void Optimize(ILayer layer, int idx, Matrix w, Matrix nabla_w)

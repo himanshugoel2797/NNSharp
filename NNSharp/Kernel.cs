@@ -10,6 +10,8 @@ namespace NNSharp
 {
     public class Kernel
     {
+        public string Name { get; set; }
+
         internal OpenCL.Net.Kernel kern;
         private CLExtensions.KernelArgChain chain;
         private bool reset = true;

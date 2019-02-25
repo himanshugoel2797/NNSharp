@@ -62,8 +62,7 @@ namespace NNSharp.ANN.Layers
 
         public void SetInputSize(int input_side, int input_depth)
         {
-            inputSz = input_side;
-            inputDpth = input_depth;
+
         }
         #endregion
 

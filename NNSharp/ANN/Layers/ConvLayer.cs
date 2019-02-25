@@ -11,9 +11,13 @@ namespace NNSharp.ANN.Layers
     [Serializable]
     public class ConvLayer : ILayer, IWeightInitializable
     {
-        //Forward: Take an image as input and convolve it with the specified number of filters
-        //Backward: Apply deconvolution to update the filters
-        private int inputSz = 0, outputSz = 0, inputDepth = 0, filterSz = 0 /*F*/, paddingSz = 0 /*P*/, filterCnt = 0 /*K*/, strideLen = 0 /*S*/;
+        private int inputSz = 0;
+        private int outputSz = 0;
+        private int inputDepth = 0;
+        private readonly int filterSz = 0 /*F*/;
+        private readonly int paddingSz = 0 /*P*/;
+        private readonly int filterCnt = 0 /*K*/;
+        private readonly int strideLen = 0 /*S*/;
         public Matrix[][] Weights;
         public Vector Bias;
 

@@ -18,10 +18,17 @@ namespace NNSharp.ANN.NetworkBuilder
         }
 
         #region Internal State Update/Checking
-        protected internal override void Initializer(LayerContainerBase input)
+        public override void SetupInternalState()
         {
-            if (input is LayerContainer)
-                CurrentLayer.SetInputSize((input as LayerContainer).CurrentLayer.GetOutputSize(), (input as LayerContainer).CurrentLayer.GetOutputDepth());
+            int input_sz = 0, input_dpth = 0;
+            for (int i = 0; i < InputLayers.Count; i++)
+                if (InputLayers[i] is LayerContainer)
+                {
+                    input_sz = (InputLayers[i] as LayerContainer).CurrentLayer.GetOutputSize();
+                    input_dpth = (InputLayers[i] as LayerContainer).CurrentLayer.GetOutputDepth();
+                }
+            CurrentLayer.SetInputSize(input_sz, input_dpth);
+            base.SetupInternalState();
         }
 
         public override void Check()
@@ -57,15 +64,18 @@ namespace NNSharp.ANN.NetworkBuilder
         #endregion
 
         #region Forward Propagation
-        public override Vector[] Forward(Vector[] input)
+        public override Vector[] Forward(params Vector[] input)
         {
             return CurrentLayer.Forward(input);
         }
 
-        public override Vector[] ForwardPropagate(Vector[] input)
+        public override Vector[] ForwardPropagate(params Vector[] input)
         {
             List<Vector> rets = new List<Vector>();
             var result = Forward(input);
+            if (OutputLayers.Count == 0)
+                return result;
+
             for (int i = 0; i < OutputLayers.Count; i++)
                 rets.AddRange(OutputLayers[i].ForwardPropagate(result));
             return rets.ToArray();
@@ -74,10 +84,13 @@ namespace NNSharp.ANN.NetworkBuilder
 
         #region Backward Propagation
         #region Gradients Between Layers
-        public override Vector[] ComputeGradients(Vector[] prev_delta)
+        public override Vector[] ComputeGradients(params Vector[] prev_delta)
         {
             List<Vector> rets = new List<Vector>();
             var delta = CurrentLayer.Propagate(prev_delta);
+            if (InputLayers.Count == 0)
+                return delta;
+
             for (int i = 0; i < InputLayers.Count; i++)
                 rets.AddRange(InputLayers[i].ComputeGradients(delta));
             return rets.ToArray();
@@ -85,7 +98,7 @@ namespace NNSharp.ANN.NetworkBuilder
         #endregion
 
         #region Gradients Per Layer
-        public override void ComputeLayerErrors(Vector[] prev_delta)
+        public override void ComputeLayerErrors(params Vector[] prev_delta)
         {
             CurrentLayer.LayerError(prev_delta);
             var delta = CurrentLayer.GetLastDelta();

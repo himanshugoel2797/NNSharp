@@ -68,7 +68,6 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ConvSuperResolution.cs" />
-    <Compile Include="SuperResolution.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

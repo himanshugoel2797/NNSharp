@@ -160,7 +160,7 @@ namespace AnimeAI.Tests
             {
                 Random rng = new Random(0);
                 TrainingFiles.AddRange(Directory.EnumerateFiles(TrainingDataPath_SMALL));
-                while (TrainingFiles.Count > 5000)
+                while (TrainingFiles.Count > 500)
                 {
                     TrainingFiles.RemoveAt(TrainingFiles.Count - 1);
                 }
@@ -212,8 +212,7 @@ namespace AnimeAI.Tests
         public void LoadImage(string file, float[] img)
         {
             var bmp = new Bitmap(file);
-
-            int i = 0;
+            
             for (int h = 0; h < bmp.Height; h++)
                 for (int w = 0; w < bmp.Width; w++)
                 {

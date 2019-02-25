@@ -17,6 +17,7 @@ namespace NNSharp
 
 #if GPU
         internal Memory memory;
+        internal MemoryFlags flags;
 #elif CPU
         internal float[] memory;
 #endif
@@ -25,6 +26,7 @@ namespace NNSharp
         {
             Length = len;
 #if GPU
+            this.flags = flags;
             memory = Device.GetDevice().AllocateMemory(len, flags, zero);
 #elif CPU
             memory = new float[len];

@@ -20,7 +20,7 @@ namespace NNSharp.ANN.ActivationFunctions
         {
             return new ActivationFunctionInfo()
             {
-                GPUFunction = $"activ_res = isgreater(res, 0) * res + isless(res, 0) * {(float)Math.Floor(Alpha)}.{Alpha - (float)Math.Floor(Alpha)}f * res;",
+                GPUFunction = $"activ_res = isgreater(res, 0) * res + isless(res, 0) * {Alpha}f * res;",
                 CPUFunction = (res) =>
                 {
                     if (res < 0)
@@ -35,7 +35,7 @@ namespace NNSharp.ANN.ActivationFunctions
         {
             return new ActivationFunctionInfo()
             {
-                GPUFunction = $"activ_res = isgreater(res, 0) + isless(res, 0) * {(float)Math.Floor(Alpha)}.{Alpha - (float)Math.Floor(Alpha)}f;",
+                GPUFunction = $"activ_res = isgreater(res, 0) + isless(res, 0) * {Alpha}f;",
                 CPUFunction = (res) =>
                 {
                     if (res < 0)

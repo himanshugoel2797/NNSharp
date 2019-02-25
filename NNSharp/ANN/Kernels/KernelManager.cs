@@ -258,7 +258,7 @@ namespace NNSharp.ANN.Kernels
             if (kernelSz * kernelSz < MemLimit)
                 idx = 1 << 2;
             else if (inputSz * inputSz < MemLimit)
-                idx = 3 << 2;
+                idx = 2 << 2;
             else
                 idx = 0;
 

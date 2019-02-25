@@ -39,7 +39,7 @@ namespace NNSharp.ANN.Layers
         
         public void Learn(IOptimizer optimizer)
         {
-            optimizer.RegisterLayer(this, 1, input_sz * input_dpth, k * output_dpth, 1, k * output_dpth);
+            optimizer.RegisterLayer(this, 1, input_sz * input_sz * input_dpth, k * k * output_dpth, 1, k * k * output_dpth);
             optimizer.Optimize(this, 0, Weights, WeightDelta);
             optimizer.Optimize(this, 0, Biases, BiasDelta);
         }
@@ -93,13 +93,13 @@ namespace NNSharp.ANN.Layers
             input_sz = sz;
             input_dpth = dpth;
 
-            if (Weights == null) Weights = new Matrix(sz * input_dpth, k * output_dpth, MemoryFlags.ReadWrite, false);
-            if (Biases == null) Biases = new Vector(k * output_dpth, MemoryFlags.ReadWrite, false);
+            if (Weights == null) Weights = new Matrix(sz * sz * input_dpth, k * k * output_dpth, MemoryFlags.ReadWrite, false);
+            if (Biases == null) Biases = new Vector(k * k * output_dpth, MemoryFlags.ReadWrite, false);
 
-            BiasDelta = new Vector(k * output_dpth, MemoryFlags.ReadWrite, false);
-            WeightDelta = new Matrix(sz * input_dpth, k * output_dpth, MemoryFlags.ReadWrite, false);
-            ResultMemory = new Vector(k * output_dpth, MemoryFlags.ReadWrite, false);
-            CurDeltaMemory = new Vector(sz * input_dpth, MemoryFlags.ReadWrite, false);
+            BiasDelta = new Vector(k * k * output_dpth, MemoryFlags.ReadWrite, false);
+            WeightDelta = new Matrix(sz * sz * input_dpth, k * k * output_dpth, MemoryFlags.ReadWrite, false);
+            ResultMemory = new Vector(k * k * output_dpth, MemoryFlags.ReadWrite, false);
+            CurDeltaMemory = new Vector(sz * sz * input_dpth, MemoryFlags.ReadWrite, false);
         }
         #endregion
 

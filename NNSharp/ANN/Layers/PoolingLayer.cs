@@ -151,7 +151,6 @@ namespace NNSharp.ANN.Layers
         #region Parameter Setup
         public int GetOutputSize()
         {
-            int output_sz = 1 + (input_sz - filter_side) / stride;
             return output_sz;
         }
 

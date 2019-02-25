@@ -5,6 +5,7 @@ using NNSharp.ANN.Layers;
 using NNSharp.ANN.LossFunctions;
 using NNSharp.ANN.Optimizers;
 using NNSharp.ANN.WeightInitializers;
+using NNSharp.ANN.NetworkBuilder;
 using NNSharp.Tools;
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,7 @@ namespace AnimeAI.Tests
 {
     class ConvSuperResolution
     {
-        NeuralNetwork superres_enc, superres_dec, superres_comb;
+        LayerContainer superres_enc_front, superres_enc_back, superres_dec_front, superres_dec_back;
 
         const int StartSide = 32;
         const int LatentSize = 4 * 4 * 4;
@@ -25,109 +26,93 @@ namespace AnimeAI.Tests
         const int InputSize = StartSide * StartSide * 3;
         const int OutputSize = EndSide * EndSide * 3;
 
-        const int BatchSize = 64;
+        const int BatchSize = 32;
 
         public ConvSuperResolution()
         {
-            superres_enc = new NeuralNetworkBuilder(InputSize)
-                .LossFunction<Quadratic>()
-                .WeightInitializer(new UniformWeightInitializer(0, 0.001f))
-                
-                .AddConv(3, 32, 0, 1, 3)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 32)
-                .AddActivation<LeakyReLU>()
-                .AddPooling(2, 2)
-                .AddConv(3, 32)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 16)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 16)
-                .AddActivation<LeakyReLU>()
-                .AddPooling(2, 2)
-                .AddConv(3, 4, 1)
-                .AddActivation<LeakyReLU>()
-                .Build();
-            /*
-            superres_dec = new NeuralNetworkBuilder(LatentSize)
-                .LossFunction<Quadratic>()
-                .WeightInitializer(new UniformWeightInitializer(0, 0.001f))
-                .AddFC(128)
-                .AddActivation<Tanh>()
-                .AddFC(128)
-                .AddActivation<Tanh>()
-                .AddFC(128)
-                .AddActivation<Tanh>()
-                .AddFC(OutputSize)
-                .AddActivation<Tanh>()
-                .Build();
-                */
-            superres_dec = new NeuralNetworkBuilder(LatentSize)
-                .LossFunction<Quadratic>()
-                .WeightInitializer(new UniformWeightInitializer(0, 0.001f))
-                .AddFC(8 * 8 * 8)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 18, 2, 8)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 18, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 18, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 18, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 18, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 9, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 9, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 9, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 9, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 3, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 3, 2)
-                .AddActivation<LeakyReLU>()
-                .AddConv(3, 3, 2)
-                .AddActivation<Tanh>()
-                .Build();
+            superres_enc_front = InputLayer.Create(StartSide, 3);
+            superres_enc_back = ActivationLayer.Create<LeakyReLU>();
 
+            superres_enc_front.Append(
+                ConvLayer.Create(3, 16).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 16).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                PoolingLayer.Create(2, 2).Append(
+                ConvLayer.Create(3, 16).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 8).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 4).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                PoolingLayer.Create(2, 2).Append(
+                ConvLayer.Create(3, 4, 1).Append(
+                    superres_enc_back
+            ))))))))))))));
 
-            superres_comb = new NeuralNetworkBuilder(InputSize)
-                                .LossFunction<Quadratic>()
-                                .WeightInitializer(new UniformWeightInitializer(0, 0.001f))
-                                .Add(superres_enc)
-                                .Add(superres_dec)
-                                .Build();
+            superres_dec_front = InputLayer.Create(4, 4);
+            superres_dec_back = ActivationLayer.Create<Tanh>();
+
+            superres_dec_front.Append(
+                FCLayer.Create(8, 8).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 8, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 8, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 8, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 8, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 8, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 5, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 5, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 5, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 5, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 3, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 3, 2).Append(
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 3, 2).Append(
+                    superres_dec_back
+            ))))))))))))))))))))))))));
+
+            superres_enc_back.Append(superres_dec_front);
+
+            //Initialize Weights
+            superres_enc_front.SetupInternalState();
+            superres_enc_front.InitializeWeights(new UniformWeightInitializer(0, 0.001f));
         }
 
         public void Train()
         {
-            Directory.CreateDirectory(@"DConvAutoencoder_Data");
-            Directory.CreateDirectory(@"DConvAutoencoder_Data\Results");
-            Directory.CreateDirectory(@"DConvAutoencoder_Data\DecResults");
-            Directory.CreateDirectory(@"DConvAutoencoder_Data\Diff");
-            Directory.CreateDirectory(@"DConvAutoencoder_Data\DiffTest");
-            Directory.CreateDirectory(@"DConvAutoencoder_Data\Filters");
+            string dir = "NDConvAutoencoder_Data";
 
-            AnimeDatasets a_dataset = new AnimeDatasets(StartSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_small");
+            Directory.CreateDirectory($@"{dir}");
+            Directory.CreateDirectory($@"{dir}\Results");
+            Directory.CreateDirectory($@"{dir}\Sources");
+
+            AnimeDatasets a_dataset = new AnimeDatasets(StartSide, @"I:\Datasets\anime-faces\emilia_(re_zero)", @"I:\Datasets\anime-faces\emilia_small");
             a_dataset.InitializeDataset();
 
-            AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_small");
+            AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\emilia_(re_zero)", @"I:\Datasets\anime-faces\emilia_small");
             b_dataset.InitializeDataset();
 
             Adam sgd = new Adam(0.001f);
+            Quadratic quadratic = new Quadratic();
 
             NRandom r = new NRandom(0);
             NRandom r2 = new NRandom(0);
 
-            float[] res1, res2, data;
-            res1 = new float[OutputSize];
-            res2 = new float[OutputSize];
-            data = new float[LatentSize];
-            float err = float.MaxValue;
+            Vector loss_deriv = new Vector(OutputSize, MemoryFlags.ReadWrite, true);
 
+
+            #region Setup Database
             Vector data_vec = new Vector(LatentSize, MemoryFlags.ReadOnly, false);
 
             Vector[] a_dataset_vec = new Vector[a_dataset.TrainingFiles.Count];
@@ -148,75 +133,31 @@ namespace AnimeAI.Tests
                 b_dataset.LoadImage(b_dataset.TrainingFiles[i], b_dataset_f[i]);
                 b_dataset_vec[i].Write(b_dataset_f[i]);
             }
+            #endregion
 
-            for (int i0 = 000; i0 < (1 << 30) / BatchSize; i0++)
+            for (int i0 = 000; i0 < 10000 * BatchSize; i0++)
             {
-
                 int idx = (r.Next() % (a_dataset.TrainingFiles.Count / 2));
-                {
-                    var res_vec = superres_comb.Forward(a_dataset_vec[idx]);
-                    res_vec.Read(res1);
-                    a_dataset.SaveImage($@"DConvAutoencoder_Data\DiffTest\{i0}.png", a_dataset_f[idx]);
-                    b_dataset.SaveImage($@"DConvAutoencoder_Data\Results\{i0}.png", res1);
 
-                    Console.WriteLine($"SAVE [{i0}] File: {Path.GetFileNameWithoutExtension(a_dataset.TrainingFiles[idx])}");
+                var out_img = superres_enc_front.ForwardPropagate(a_dataset_vec[idx]);
+                quadratic.LossDeriv(out_img[0], b_dataset_vec[idx], loss_deriv);
+
+                superres_dec_back.ComputeGradients(loss_deriv);
+                superres_dec_back.ComputeLayerErrors(loss_deriv);
+                superres_dec_back.UpdateLayers(sgd);
+                superres_dec_back.ResetLayerErrors();
+
+                Vector.Mult(loss_deriv, 0);
+
+                if (i0 % BatchSize == 0)
+                {
+                    a_dataset.SaveImage($@"{dir}\Sources\{i0 / BatchSize}.png", a_dataset_f[idx]);
+                    b_dataset.SaveImage($@"{dir}\Results\{i0 / BatchSize}.png", out_img[0].Read());
                 }
 
-                {
-                    for (int i = 0; i < data.Length; i++)
-                        data[i] = (float)(r2.NextGaussian(0, 0.05f));
-                    data_vec.Write(data);
-
-                    var res_vec = superres_dec.Forward(data_vec);
-                    res_vec.Read(res2);
-                    b_dataset.SaveImage($@"DConvAutoencoder_Data\DecResults\{i0}.png", res2);
-
-                    Console.WriteLine($"SAVE [{i0}] DECODER");
-                }
-
-                {
-                    var conv_out = superres_enc.Layers[1].Forward(superres_enc.Layers[0].Forward(a_dataset_vec[idx]));
-                    float[] conv_out_d = new float[conv_out.Length];
-                    conv_out.Read(conv_out_d);
-
-                    var out_side = (superres_enc.Layers[0] as ConvLayer).GetFlatOutputSize();
-                    for (int i = 0; i < conv_out_d.Length / (out_side * out_side); i++)
-                    {
-                        a_dataset.SaveImage($@"DConvAutoencoder_Data\Filters\filter_{i}.png", conv_out_d, i * out_side * out_side, out_side);
-                    }
-                }
-
-                float err0 = 0;
-                for (int i = 0; i < BatchSize; i++)
-                {
-                    int b_idx = (r.Next() % a_dataset.TrainingFiles.Count);// + a_dataset.TrainingFiles.Count / 2;
-                    superres_comb.TrainSingle(a_dataset_vec[b_idx], b_dataset_vec[b_idx], sgd);
-                    err0 += superres_comb.Error();
-
-                    if (i % 10 == 0)
-                        Console.Write(i / 10 + ",");
-                }
-
-                err0 /= BatchSize;
-                Console.WriteLine($"[{i0}] Error: {err0}");
-                //sgd.Update(err0);
-                //sgd.SetLearningRate(0.5f);// * (float)Math.Exp(-i0 * 0.001f));
-                if (err0 < err)
-                {
-                    if (err0 < 0.1f)
-                    {
-                        superres_enc.Save($@"DConvAutoencoder_Data\encoder{i0}.bin");
-                        superres_dec.Save($@"DConvAutoencoder_Data\decoder{i0}.bin");
-                        superres_comb.Save($@"DConvAutoencoder_Data\combined{i0}.bin");
-                    }
-
-                    err = err0;
-                }
-
+                Console.Clear();
+                Console.Write($"Iteration: {i0}");
             }
-            superres_enc.Save($@"DConvAutoencoder_Data\encoder_f.bin");
-            superres_dec.Save($@"DConvAutoencoder_Data\decoder_f.bin");
-            superres_comb.Save($@"DConvAutoencoder_Data\combined_f.bin");
 
             Console.WriteLine("DONE.");
         }

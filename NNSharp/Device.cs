@@ -54,6 +54,7 @@ namespace NNSharp
 
             Kernel kernel = new Kernel
             {
+                Name = kernelName,
                 kern = env.Context.CompileKernelFromSource(code, kernelName, out err, out string errCode, "-cl-unsafe-math-optimizations"),
             };
 
@@ -91,12 +92,32 @@ namespace NNSharp
             env.CommandQueues[2].ReadFromBuffer(mem.buf, data, 0, -1, new Event[0]);
         }
 
+#if DEBUG
+        FileStream perfLogFile = null;
+        StreamWriter perfLogWriter = null;
+#endif
         public void Dispatch(Kernel k, uint[] global_sz, uint[] local_sz)
         {
+#if DEBUG
+            if (perfLogFile == null)
+            {
+                perfLogFile = File.OpenWrite("log.txt");
+                perfLogWriter = new StreamWriter(perfLogFile);
+            }
+            System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+            stopwatch.Start();
+#endif
+
             Cl.EnqueueNDRangeKernel(env.CommandQueues[0], k.kern, 2, null, new IntPtr[] { (IntPtr)global_sz[0], (IntPtr)global_sz[1] }, local_sz == null ? null : new IntPtr[] { (IntPtr)local_sz[0], (IntPtr)local_sz[1] }, 0, null, out var eve);
             Cl.WaitForEvents((uint)1, new Event[] { eve });
             eve.Release();
             k.Reset();
+
+#if DEBUG
+            stopwatch.Stop();
+            perfLogWriter.WriteLine($"Kernel Name: {k.Name}   Execution Time: {stopwatch.ElapsedTicks / (double)System.Diagnostics.Stopwatch.Frequency * 1000}ms");
+            perfLogWriter.Flush();
+#endif
         }
 #endif
     }
