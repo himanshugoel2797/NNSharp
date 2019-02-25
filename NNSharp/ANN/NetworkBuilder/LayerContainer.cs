@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace NNSharp.ANN.NetworkBuilder
 {
+    [Serializable]
     public class LayerContainer : LayerContainerBase
     {
         protected ILayer CurrentLayer;

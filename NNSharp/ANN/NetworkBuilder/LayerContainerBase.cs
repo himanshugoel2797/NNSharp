@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -79,6 +81,27 @@ namespace NNSharp.ANN.NetworkBuilder
         public abstract void ResetLayerErrors();
         public abstract void UpdateLayers(IOptimizer optimizer);
         #endregion
+        #endregion
+
+        #region Save/Load
+        public void Save(string file)
+        {
+            var serializer = new BinaryFormatter();
+            using (FileStream t = File.Create(file))
+                serializer.Serialize(t, this);
+        }
+
+        public static LayerContainerBase Load(string file)
+        {
+            LayerContainerBase n = null;
+            var serializer = new BinaryFormatter();
+
+            using (FileStream t = File.OpenRead(file))
+                n = (LayerContainerBase)serializer.Deserialize(t);
+
+            n.SetupInternalState();
+            return n;
+        }
         #endregion
     }
 }

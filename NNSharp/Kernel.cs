@@ -12,7 +12,7 @@ namespace NNSharp
     {
         public string Name { get; set; }
 
-#if DELAY_COMPILE
+#if DELAY_COMPILE && GPU
         public string SourceCode { get; set; }
         public bool Initialized { get; set; }
 #endif
@@ -28,7 +28,7 @@ namespace NNSharp
 
         public Kernel SetArgument<T>(T val) where T : struct, IComparable
         {
-#if DELAY_COMPILE
+#if DELAY_COMPILE && GPU
             if (!Initialized)
             {
                 Initialized = true;
@@ -47,7 +47,7 @@ namespace NNSharp
 
         public Kernel SetArgumentMemory(Memory val)
         {
-#if DELAY_COMPILE
+#if DELAY_COMPILE && GPU
             if (!Initialized)
             {
                 Initialized = true;

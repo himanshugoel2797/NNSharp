@@ -51,7 +51,11 @@ namespace NNSharp.ANN.Layers
         }
 
         public void ResetLayerError()
-        {
+        {/*
+            for (int i = 0; i < filterCnt; i++)
+                for (int j = 0; j < inputDepth; j++)
+                    Matrix.Mult(WeightErrors[i][j], 0);
+                    */
             WeightErrorsReset = true;
             Vector.Mult(BiasError, 0);
         }
@@ -63,8 +67,10 @@ namespace NNSharp.ANN.Layers
                 for (int x = 0; x < outputSz; x++)
                 {
                     if (zero)
+                    {
                         if (rotOutput) output[outputOff + (outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] = 0;
                         else output[outputOff + y * outputSz + x] = 0;
+                    }
 
                     for (int y0 = 0; y0 < filterSz; y0++)
                     {
@@ -158,7 +164,7 @@ namespace NNSharp.ANN.Layers
                     //kern = prev_delta
                     //i = input
                     //o = WeightErrors[i][j]
-
+                     
                     int padd = ((filterSz - 1) * strideLen - inputSz + outputSz) / 2;
 #if GPU
                     KernelManager.Convolve(PrevInput, j * inputSz * inputSz, inputSz, prev_delta[0], i * outputSz * outputSz, outputSz, true, padd, strideLen, WeightErrors[i][j], 0, filterSz, true, WeightErrorsReset);

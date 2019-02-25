@@ -159,6 +159,7 @@ namespace AnimeAI.Tests
                 Console.Write($"Iteration: {i0}");
             }
 
+            superres_enc_front.Save($@"{dir}\network_final.bin");
             Console.WriteLine("DONE.");
         }
     }

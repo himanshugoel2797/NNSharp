@@ -39,7 +39,7 @@ namespace NNSharp.ANN.Layers
         {
             this.k = k;
             this.output_dpth = output_dpth;
-            this.layerReset = true;
+            this.layerReset = false;
         }
          
         public void Learn(IOptimizer optimizer)
