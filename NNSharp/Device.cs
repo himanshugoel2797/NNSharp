@@ -56,8 +56,19 @@ namespace NNSharp
             Kernel kernel = new Kernel
             {
                 Name = kernelName,
+
+#if DELAY_COMPILE
+                SourceCode = code,
+                Initialized = false,
+#else
                 kern = env.Context.CompileKernelFromSource(code, kernelName, out err, out string errCode, "-cl-unsafe-math-optimizations"),
+#endif
             };
+
+#if DELAY_COMPILE
+            string errCode = "Success";
+            err = "";
+#endif
 
             if (errCode == "Success")
             {

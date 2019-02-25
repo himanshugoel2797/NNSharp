@@ -7,5 +7,9 @@
     const int globalCol = get_global_id(1);
     
     if(globalCol < COLS && globalRow < ROWS)
+#ifdef ZERO_O
+        C[globalCol * ROWS + globalRow] = A[globalRow] * B[globalCol];
+#else
         C[globalCol * ROWS + globalRow] += A[globalRow] * B[globalCol];
+#endif
 }

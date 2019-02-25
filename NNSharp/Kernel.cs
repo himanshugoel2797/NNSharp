@@ -12,6 +12,11 @@ namespace NNSharp
     {
         public string Name { get; set; }
 
+#if DELAY_COMPILE
+        public string SourceCode { get; set; }
+        public bool Initialized { get; set; }
+#endif
+
         internal OpenCL.Net.Kernel kern;
         private CLExtensions.KernelArgChain chain;
         private bool reset = true;
@@ -23,6 +28,13 @@ namespace NNSharp
 
         public Kernel SetArgument<T>(T val) where T : struct, IComparable
         {
+#if DELAY_COMPILE
+            if (!Initialized)
+            {
+                Initialized = true;
+                kern = Device.GetDevice().env.Context.CompileKernelFromSource(SourceCode, Name, "-cl-unsafe-math-optimizations");
+            }
+#endif
             if (reset)
             {
                 chain = kern.SetKernelArg(val);
@@ -35,6 +47,13 @@ namespace NNSharp
 
         public Kernel SetArgumentMemory(Memory val)
         {
+#if DELAY_COMPILE
+            if (!Initialized)
+            {
+                Initialized = true;
+                kern = Device.GetDevice().env.Context.CompileKernelFromSource(SourceCode, Name, "-cl-unsafe-math-optimizations");
+            }
+#endif
             if (reset)
             {
                 chain = kern.SetKernelArg((IMem)val.buf);

@@ -24,7 +24,7 @@ namespace NNSharp.ANN.Kernels
         static Dictionary<string, Kernel[]> activ_kernels;
         static Dictionary<string, Kernel[]> activ_hadamard_kernels;
         static Kernel[] fmop_kernels;
-        static Kernel inner_prod;
+        static Kernel[] inner_prod;
 
         static Device device;
 
@@ -53,7 +53,10 @@ namespace NNSharp.ANN.Kernels
             }
 
             //Inner Product
-            inner_prod = device.LoadKernel("inner_prod", "");
+            inner_prod = new Kernel[]{
+                device.LoadKernel("inner_prod", ""),
+                device.LoadKernel("inner_prod", "", "#define ZERO_O")
+            };
         }
 
         #region SGEMV
@@ -121,7 +124,7 @@ namespace NNSharp.ANN.Kernels
                 .SetArgumentMemory(i.memory)
                 .SetArgument(i_off);
 
-            device.Dispatch(vec_const_sum_kernels[o.Length][0], new uint[] { (uint)(o.Length / (1 << len) + 1), 1}, null);
+            device.Dispatch(vec_const_sum_kernels[o.Length][0], new uint[] { (uint)(o.Length / (1 << len) + 1), 1 }, null);
         }
         #endregion
 
@@ -202,16 +205,16 @@ namespace NNSharp.ANN.Kernels
             device.Dispatch(loss_kernels[func][len], new uint[] { (uint)(expectedOutput.Length / (1 << len) + 1), 1 }, null);
         }
 
-        public static void InnerProduct(Vector a, Vector b, Matrix c)
+        public static void InnerProduct(Vector a, Vector b, Matrix c, bool zero)
         {
-            inner_prod
+            inner_prod[zero ? 1 : 0]
                 .SetArgument(c.Width)
                 .SetArgument(c.Height)
                 .SetArgumentMemory(a.memory)
                 .SetArgumentMemory(b.memory)
                 .SetArgumentMemory(c.memory);
 
-            device.Dispatch(inner_prod, new uint[] { (uint)c.Height, (uint)c.Width }, null);
+            device.Dispatch(inner_prod[zero ? 1 : 0], new uint[] { (uint)c.Height, (uint)c.Width }, null);
         }
 
         #region Convolution
