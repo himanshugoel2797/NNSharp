@@ -153,7 +153,13 @@ namespace NNSharp
         {
 
 #if GPU
-            KernelManager.Fmop(a, 0, a, rate);
+            if (rate == 0)
+            {
+                var dev = Device.GetDevice();
+                dev.Fill(a.memory, 0, a.Length * sizeof(float), 0);
+            }
+            else
+                KernelManager.Fmop(a, 0, a, rate);
 #elif CPU
             if (rate == 1)
                 return;
@@ -215,9 +221,11 @@ namespace NNSharp
 #endif
         }
 
-        public static void VectorSum(Vector a, int a_off, Vector b, int b_off, int b_side)
+        public static void VectorSum(Vector a, int a_off, Vector b, int b_off, int b_side, bool zero)
         {
 #if GPU
+#warning Inefficient on GPU, every thread writes to the same location, may want to redesign
+            Vector.Mult(a, 0);
             KernelManager.VectorSum(a, a_off, b, b_off, b_side * b_side);
 #elif CPU
             //Parallel.For(0, b.memory.Length, (i) => b.memory[i] += a.memory[i]);
@@ -226,9 +234,12 @@ namespace NNSharp
                 fixed (float* a_p = a.memory)
                 fixed (float* b_p = b.memory)
                 {
+                    if (zero)
+                        a_p[a_off] = 0;
+
                     for (int i = 0; i < b_side; i++)
                         for (int j = 0; j < b_side; j++)
-                            a_p[a_off] += b.memory[b_off + i * b_side + j];
+                                a_p[a_off] += b.memory[b_off + i * b_side + j];
                 }
             }
 #endif

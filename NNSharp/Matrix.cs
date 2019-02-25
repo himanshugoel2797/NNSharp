@@ -106,7 +106,13 @@ namespace NNSharp
         public static void Mult(Matrix a, float rate)
         {
 #if GPU
-            KernelManager.Fmop(a, 0, a, rate);
+            if (rate == 0)
+            {
+                var dev = Device.GetDevice();
+                dev.Fill(a.memory, 0, a.Width * a.Height * sizeof(float), 0);
+            }
+            else
+                KernelManager.Fmop(a, 0, a, rate);
 #elif CPU
             if (rate == 1)
                 return;

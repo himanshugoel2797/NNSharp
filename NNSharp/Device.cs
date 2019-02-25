@@ -89,6 +89,10 @@ namespace NNSharp
             {
                 buf = Cl.CreateBuffer(env.Context, (MemFlags)(int)flags, (IntPtr)(len * sizeof(float)), out var errCode)
             };
+
+            if (zero)
+                Fill(m, 0, len * sizeof(float), 0);
+
             if (errCode != ErrorCode.Success)
                 throw new Exception(errCode.ToString());
             return m;
@@ -102,6 +106,13 @@ namespace NNSharp
         public void Read(Memory mem, float[] data)
         {
             env.CommandQueues[2].ReadFromBuffer(mem.buf, data, 0, -1, new Event[0]);
+        }
+
+        public void Fill(Memory mem, int off, int len, float val)
+        {
+            Cl.EnqueueFillBuffer(env.CommandQueues[1], mem.buf, val, sizeof(float), (uint)off, (uint)len, 0, null, out Event eve);
+            Cl.WaitForEvents(1, new Event[] { eve });
+            eve.Release();
         }
 
 #if DEBUG

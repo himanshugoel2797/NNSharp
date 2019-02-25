@@ -11,7 +11,7 @@ __kernel void conv_ksmall(const int IN_OFF,
                           const int KERN_OFF,
                           const int OUT_OFF,
                           const __global float* i,
-                          const __global float* kern,
+                          __constant float* kern,
                           __global float* o) {
 
     const int globalRow = get_global_id(0); //row

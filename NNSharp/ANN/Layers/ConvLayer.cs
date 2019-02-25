@@ -55,9 +55,9 @@ namespace NNSharp.ANN.Layers
             for (int i = 0; i < filterCnt; i++)
                 for (int j = 0; j < inputDepth; j++)
                     Matrix.Mult(WeightErrors[i][j], 0);
+            Vector.Mult(BiasError, 0);
                     */
             WeightErrorsReset = true;
-            Vector.Mult(BiasError, 0);
         }
 
         private static void Convolve(float[] input, bool rotInput, int inputOff, int inputSz, int paddingSz, int strideLen, float[] filter, bool rotFilter, int filterOff, int filterSz, float[] output, bool rotOutput, int outputOff, int outputSz, bool zero)
@@ -147,7 +147,7 @@ namespace NNSharp.ANN.Layers
             //Filter weight errors = covolution of Input with prev_delta <- doesn't tell us about individual filters per input dimension -> For now, treat the error as the same for each filter per input dimension
             for (int i = 0; i < filterCnt; i++)
             {
-                Vector.VectorSum(BiasError, i, prev_delta[0], i * outputSz * outputSz, outputSz);
+                Vector.VectorSum(BiasError, i, prev_delta[0], i * outputSz * outputSz, outputSz, WeightErrorsReset);
                 for (int j = 0; j < inputDepth; j++)
                 {
                     //convolution of input with prev_delta subportion for current filterCnt index
@@ -188,13 +188,11 @@ namespace NNSharp.ANN.Layers
         {
             PrevInput = input[0];
 
-            //Clear the output vector
-            Vector.Mult(Output, 0);
-
             //Foreach Filter Count
             int origin_base_x = filterSz / 2, origin_base_y = filterSz / 2;
             for (int i = 0; i < filterCnt; i++)
             {
+                bool output_zero = true;
                 //Foreach Input Layers
                 for (int j = 0; j < inputDepth; j++)
                 {
@@ -213,10 +211,11 @@ namespace NNSharp.ANN.Layers
                     //o = Output
 
 #if GPU
-                    KernelManager.Convolve(input[0], j * inputSz * inputSz, inputSz, Weights[i][j], 0, filterSz, false, paddingSz, strideLen, Output, i * outputSz * outputSz, outputSz, false, false);
+                    KernelManager.Convolve(input[0], j * inputSz * inputSz, inputSz, Weights[i][j], 0, filterSz, false, paddingSz, strideLen, Output, i * outputSz * outputSz, outputSz, false, output_zero);
 #elif CPU
-                    Convolve(input[0].memory, false, j * inputSz * inputSz, inputSz, paddingSz, strideLen, Weights[i][j].memory, false, 0, filterSz, Output.memory, false, i * outputSz * outputSz, outputSz, false);
+                    Convolve(input[0].memory, false, j * inputSz * inputSz, inputSz, paddingSz, strideLen, Weights[i][j].memory, false, 0, filterSz, Output.memory, false, i * outputSz * outputSz, outputSz, output_zero);
 #endif
+                    output_zero = false;
                 }
                 Vector.Add(Output, Bias, i);
             }
