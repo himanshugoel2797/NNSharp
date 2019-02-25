@@ -18,6 +18,9 @@ namespace NNSharp.ANN.Layers
         public Vector Biases;
 
         [NonSerialized]
+        private bool layerReset;
+
+        [NonSerialized]
         public Vector ResultMemory;
 
         [NonSerialized]
@@ -36,6 +39,7 @@ namespace NNSharp.ANN.Layers
         {
             this.k = k;
             this.output_dpth = output_dpth;
+            this.layerReset = true;
         }
          
         public void Learn(IOptimizer optimizer)
@@ -48,7 +52,7 @@ namespace NNSharp.ANN.Layers
         public void ResetLayerError()
         {
             //Clear the biases and deltas
-            Matrix.Mult(WeightDelta, 0);
+            layerReset = true;
             Vector.Mult(BiasDelta, 0);
         }
 
@@ -74,8 +78,10 @@ namespace NNSharp.ANN.Layers
         public void LayerError(Vector[] prev_delta)
         {
             //Compute the current weights using prev_delta as the error
-            Matrix.MatrixProduct(prev_delta[0], PrevInput, WeightDelta);
+            Matrix.MatrixProduct(prev_delta[0], PrevInput, WeightDelta, layerReset);
             Vector.Add(BiasDelta, prev_delta[0]);
+
+            layerReset = false;
         }
 
         #region Parameter Setup

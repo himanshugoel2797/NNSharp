@@ -170,7 +170,7 @@ namespace NNSharp
 #endif
         }
 
-        public static void MatrixProduct(Vector a, Vector b, Matrix c)
+        public static void MatrixProduct(Vector a, Vector b, Matrix c, bool zero)
         {
             if (a.Length != c.Height)
                 throw new ArgumentException();
@@ -179,13 +179,16 @@ namespace NNSharp
                 throw new ArgumentException();
 
 #if GPU
-            KernelManager.InnerProduct(a, b, c);
+            KernelManager.InnerProduct(a, b, c, zero);
 #elif CPU
             Parallel.For(0, b.Length, (j) =>
             {
                 for (int i = 0; i < a.Length; i++)
                 {
-                    c.memory[i + j * c.Height] += a.memory[i] * b.memory[j];
+                    if (zero)
+                        c.memory[i + j * c.Height] = a.memory[i] * b.memory[j];
+                    else
+                        c.memory[i + j * c.Height] += a.memory[i] * b.memory[j];
                 }
             });
 #endif
