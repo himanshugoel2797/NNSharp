@@ -142,10 +142,10 @@ namespace AnimeAI.Tests
                 var out_img = superres_enc_front.ForwardPropagate(a_dataset_vec[idx]);
                 quadratic.LossDeriv(out_img[0], b_dataset_vec[idx], loss_deriv);
 
+                superres_dec_back.ResetLayerErrors();
                 superres_dec_back.ComputeGradients(loss_deriv);
                 superres_dec_back.ComputeLayerErrors(loss_deriv);
                 superres_dec_back.UpdateLayers(sgd);
-                superres_dec_back.ResetLayerErrors();
 
                 Vector.Mult(loss_deriv, 0);
 

@@ -52,6 +52,7 @@ namespace NNSharp
         {
             code = code.Replace("REPLACE_THIS", subs_name);
 
+            //TODO: consider changing this so the kernel is only compiled on use, thus reducing the initialization time spent on kernel variations that aren't used in the current program
             Kernel kernel = new Kernel
             {
                 Name = kernelName,

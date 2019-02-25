@@ -61,6 +61,11 @@ namespace NNSharp.ANN.Layers
             Parallel.For(0, outputSz, (y) =>
             {
                 for (int x = 0; x < outputSz; x++)
+                {
+                    if (zero)
+                        if (rotOutput) output[outputOff + (outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] = 0;
+                        else output[outputOff + y * outputSz + x] = 0;
+
                     for (int y0 = 0; y0 < filterSz; y0++)
                     {
                         int i_y = y * strideLen + (y0 - filterSz / 2) + filterSz / 2 - paddingSz;
@@ -79,28 +84,22 @@ namespace NNSharp.ANN.Layers
 
                                     float output_val = filter_val * input_val;
 
-                                    if (zero)
-                                    {
-                                        if (rotOutput) output[outputOff + (outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] = output_val;
-                                        else output[outputOff + y * outputSz + x] = output_val;
-                                    }
-                                    else
-                                    {
-                                        if (rotOutput) output[outputOff + (outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] += output_val;
-                                        else output[outputOff + y * outputSz + x] += output_val;
-                                    }
+                                    if (rotOutput) output[outputOff + (outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] += output_val;
+                                    else output[outputOff + y * outputSz + x] += output_val;
                                 }
                             }
                     }
+                }
             });
         }
 
         public Vector[] Propagate(Vector[] prev_delta)
         {
             //cur_delta = BackwardDelta = Full convolution of prev_delta with 180 rotated filter <- sum from all filters in terms of filterCnt, but spread across inputDepth? 
-            
             for (int j = 0; j < inputDepth; j++)
             {
+                bool clearBackwardDelta = true;
+
                 for (int i = 0; i < filterCnt; i++)
                 {
                     //Add the Full convolution of prev_delta with 180 rotated current filter
@@ -119,12 +118,13 @@ namespace NNSharp.ANN.Layers
                     int pSz = ((inputSz - 1) * strideLen - filterSz + outputSz) / 2;
                     int padd = ((inputSz - 1) * strideLen - outputSz + filterSz) / 2;
 #if GPU
-                    KernelManager.Convolve(prev_delta[0], i * outputSz * outputSz, outputSz, Weights[i][j], 0, filterSz, true, padd, strideLen, BackwardDelta, j * inputSz * inputSz, inputSz, false, true);
+                    KernelManager.Convolve(prev_delta[0], i * outputSz * outputSz, outputSz, Weights[i][j], 0, filterSz, true, padd, strideLen, BackwardDelta, j * inputSz * inputSz, inputSz, false, clearBackwardDelta);
 
 #elif CPU
                     //Convolve(Weights[i][j].memory, false, 0, filterSz, outputSz - 1, strideLen, prev_delta.memory, true, i * outputSz * outputSz, outputSz, BackwardDelta.memory, true, j * inputSz * inputSz, inputSz);
-                    Convolve(prev_delta[0].memory, false, i * outputSz * outputSz, outputSz, padd, strideLen, Weights[i][j].memory, true, 0, filterSz, BackwardDelta.memory, false, j * inputSz * inputSz, inputSz, true);
+                    Convolve(prev_delta[0].memory, false, i * outputSz * outputSz, outputSz, padd, strideLen, Weights[i][j].memory, true, 0, filterSz, BackwardDelta.memory, false, j * inputSz * inputSz, inputSz, clearBackwardDelta);
 #endif
+                    clearBackwardDelta = false;
                 }
             }
 
@@ -163,19 +163,19 @@ namespace NNSharp.ANN.Layers
 #if GPU
                     KernelManager.Convolve(PrevInput, j * inputSz * inputSz, inputSz, prev_delta[0], i * outputSz * outputSz, outputSz, true, padd, strideLen, WeightErrors[i][j], 0, filterSz, true, WeightErrorsReset);
 #elif CPU
-                           //int oSz = (i - fSz + 2 * pSz) / strLen + 1;
-                           //oSz = filterSz
-                           //i = inputSz
-                           //fSz = outputSz
-                           //pSz = ??
-                           //strLen = strideLen
-                           //((filterSz - 1) * strideLen - inputSz + outputSz)/2
+                    //int oSz = (i - fSz + 2 * pSz) / strLen + 1;
+                    //oSz = filterSz
+                    //i = inputSz
+                    //fSz = outputSz
+                    //pSz = ??
+                    //strLen = strideLen
+                    //((filterSz - 1) * strideLen - inputSz + outputSz)/2
 
-                        Convolve(PrevInput.memory, false, j * inputSz * inputSz, inputSz, padd, strideLen, prev_delta[0].memory, true, i * outputSz * outputSz, outputSz, WeightErrors[i][j].memory, true, 0, filterSz, WeightErrorsReset);
+                    Convolve(PrevInput.memory, false, j * inputSz * inputSz, inputSz, padd, strideLen, prev_delta[0].memory, true, i * outputSz * outputSz, outputSz, WeightErrors[i][j].memory, true, 0, filterSz, WeightErrorsReset);
 #endif
-                    WeightErrorsReset = false;
                 }
             }
+            WeightErrorsReset = false;
         }
 
         public Vector[] Forward(Vector[] input)

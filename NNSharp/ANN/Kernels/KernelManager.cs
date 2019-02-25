@@ -278,7 +278,7 @@ namespace NNSharp.ANN.Kernels
                 idx |= 2;
 
             if (zero)
-                idx |= 7;
+                idx |= 4;
 
 
             conv_kernels[a_dims][idx]
