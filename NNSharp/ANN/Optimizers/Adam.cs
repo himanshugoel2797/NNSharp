@@ -36,7 +36,10 @@ namespace NNSharp.ANN.Optimizers
         {
             var dev = Device.GetDevice();
 
-            int len = o_len;
+            while (o_len % 4 != 0)
+                o_len++;
+
+            int len = o_len / 4;
             var wpt = (KernelManager.MaxWPT - 1);
             while ((1 << wpt > len | len / (1 << wpt) < KernelManager.Ratio) && wpt >= 0)
                 wpt--;
