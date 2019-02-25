@@ -6,6 +6,7 @@
 
 //ROT_KERN
 //ROT_OUT
+//ZERO_O
 
 __kernel void conv_ismall(const int IN_OFF,
                           const int KERN_OFF,
@@ -43,9 +44,17 @@ __kernel void conv_ismall(const int IN_OFF,
 #endif
         }
 
+#ifdef ZERO_O
+#ifdef ROT_OUT
+    o[OUT_OFF + (OUT_D - 1 - col) * OUT_D + (OUT_D - 1 - row)] = acc;
+#else
+    o[OUT_OFF + col * OUT_D + row] = acc;
+#endif
+#else
 #ifdef ROT_OUT
     o[OUT_OFF + (OUT_D - 1 - col) * OUT_D + (OUT_D - 1 - row)] += acc;
 #else
     o[OUT_OFF + col * OUT_D + row] += acc;
+#endif
 #endif
 }

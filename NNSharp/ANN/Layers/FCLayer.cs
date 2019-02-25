@@ -10,7 +10,8 @@ namespace NNSharp.ANN.Layers
     [Serializable]
     public class FCLayer : ILayer, IWeightInitializable
     {
-        private int k, output_dpth;
+        private readonly int k;
+        private readonly int output_dpth;
         private int input_sz, input_dpth;
 
         public Matrix Weights;
@@ -36,7 +37,7 @@ namespace NNSharp.ANN.Layers
             this.k = k;
             this.output_dpth = output_dpth;
         }
-        
+         
         public void Learn(IOptimizer optimizer)
         {
             optimizer.RegisterLayer(this, 1, input_sz * input_sz * input_dpth, k * k * output_dpth, 1, k * k * output_dpth);

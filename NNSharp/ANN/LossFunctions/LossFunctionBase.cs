@@ -10,7 +10,8 @@ namespace NNSharp.ANN.LossFunctions
     [Serializable]
     public abstract class LossFunctionBase : ILossFunction
     {
-        private string func, func_deriv;
+        private readonly string func;
+        private readonly string func_deriv;
 
         public LossFunctionBase(string func, string func_deriv)
         {

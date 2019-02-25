@@ -216,17 +216,17 @@ namespace NNSharp.ANN.Kernels
 
         #region Convolution
         const int MemLimit = 400;
-        public static void Convolve(Vector input, int input_off, int inputSz, Matrix kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Vector output, int output_off, int outputSize, bool rot180out)
+        public static void Convolve(Vector input, int input_off, int inputSz, Matrix kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Vector output, int output_off, int outputSize, bool rot180out, bool zero)
         {
-            Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize, rot180out);
+            Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize, rot180out, zero);
         }
 
-        public static void Convolve(Vector input, int input_off, int inputSz, Vector kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Matrix output, int output_off, int outputSize, bool rot180out)
+        public static void Convolve(Vector input, int input_off, int inputSz, Vector kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Matrix output, int output_off, int outputSize, bool rot180out, bool zero)
         {
-            Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize, rot180out);
+            Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize, rot180out, zero);
         }
 
-        private static void Convolve(Memory input, int input_off, int inputSz, Memory kernel, int kernelOff, int kernelSz, bool rot180Kernel, int inputPadding, int stride, Memory output, int output_off, int outputSize, bool rot180out)
+        private static void Convolve(Memory input, int input_off, int inputSz, Memory kernel, int kernelOff, int kernelSz, bool rot180Kernel, int inputPadding, int stride, Memory output, int output_off, int outputSize, bool rot180out, bool zero)
         {
             var a_dims = new Tuple<int, int, int, int, int>(inputSz, kernelSz, inputPadding, outputSize, stride);
             if (!conv_kernels.ContainsKey(a_dims))
@@ -238,10 +238,14 @@ namespace NNSharp.ANN.Kernels
 
                 var diff_args = new string[][]
                 {
-                    new string[] { },
-                    new string[] { "", "#define ROT_KERN" },
-                    new string[] { "#define ROT_OUT", "" },
-                    new string[] { "#define ROT_OUT", "#define ROT_KERN" },
+                    new string[] { "", "", "" },
+                    new string[] { "", "", "#define ROT_KERN" },
+                    new string[] { "", "#define ROT_OUT", "" },
+                    new string[] { "", "#define ROT_OUT", "#define ROT_KERN" },
+                    new string[] { "#define ZERO_O", "", "" },
+                    new string[] { "#define ZERO_O", "", "#define ROT_KERN" },
+                    new string[] { "#define ZERO_O", "#define ROT_OUT", "" },
+                    new string[] { "#define ZERO_O", "#define ROT_OUT", "#define ROT_KERN" },
                 };
 
                 var conv_kern_names = new string[] { "conv", "conv_ksmall", "conv_ismall" };
@@ -261,9 +265,9 @@ namespace NNSharp.ANN.Kernels
 
             int idx = 0;
             if (kernelSz * kernelSz < MemLimit)
-                idx = 1 << 2;
+                idx = 1 << 3;
             else if (inputSz * inputSz < MemLimit)
-                idx = 2 << 2;
+                idx = 2 << 3;
             else
                 idx = 0;
 
@@ -272,6 +276,9 @@ namespace NNSharp.ANN.Kernels
 
             if (rot180out)
                 idx |= 2;
+
+            if (zero)
+                idx |= 7;
 
 
             conv_kernels[a_dims][idx]
