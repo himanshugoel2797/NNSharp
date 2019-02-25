@@ -29,6 +29,7 @@ namespace NNSharp.ANN.Kernels
         static Device device;
 
         public const int MaxWPT = 10;
+        public const int Ratio = 128;
 
         public static void Initialize()
         {
@@ -104,8 +105,9 @@ namespace NNSharp.ANN.Kernels
         public static void VectorConstSum(Vector o, Vector i, int i_off)
         {
             var len = (MaxWPT - 1);
-            while (1 << len > o.Length)
+            while ((1 << len > o.Length | o.Length / (1 << len) < Ratio) && len >= 0)
                 len--;
+            if (len < 0) len = 0;
 
             if (!vec_const_sum_kernels.ContainsKey(o.Length))
             {
@@ -127,8 +129,9 @@ namespace NNSharp.ANN.Kernels
         public static void VectorSum(Vector o, int o_off, Vector i, int i_off, int i_len)
         {
             var len = (MaxWPT - 1);
-            while (1 << len > i_len)
+            while ((1 << len > i_len | i_len / (1 << len) < Ratio) && len >= 0)
                 len--;
+            if (len < 0) len = 0;
 
             if (!vec_sum_kernels.ContainsKey(i_len))
             {
@@ -151,8 +154,9 @@ namespace NNSharp.ANN.Kernels
         private static void Fmop(Memory a, float rate_a, Memory b, float rate_b, int a_len)
         {
             var len = (MaxWPT - 1);
-            while (1 << len > a_len)
+            while ((1 << len > a_len | a_len / (1 << len) < Ratio) && len >= 0)
                 len--;
+            if (len < 0) len = 0;
 
             fmop_kernels[len]
                 .SetArgument(a_len)
@@ -185,8 +189,9 @@ namespace NNSharp.ANN.Kernels
             }
 
             var len = (MaxWPT - 1);
-            while (1 << len > output.Length)
+            while ((1 << len > output.Length | output.Length / (1 << len) < Ratio) && len >= 0)
                 len--;
+            if (len < 0) len = 0;
 
             loss_kernels[func][len]
                 .SetArgument(output.Length)
@@ -294,8 +299,9 @@ namespace NNSharp.ANN.Kernels
             }
 
             var len = (MaxWPT - 1);
-            while (1 << len > output.Length)
+            while ((1 << len > output.Length | output.Length / (1 << len) < Ratio) && len >= 0)
                 len--;
+            if (len < 0) len = 0;
 
             activ_kernels[func][len]
                 .SetArgument(output.Length)
@@ -317,8 +323,9 @@ namespace NNSharp.ANN.Kernels
             }
 
             var len = (MaxWPT - 1);
-            while (1 << len > output.Length)
+            while ((1 << len > output.Length | output.Length / (1 << len) < Ratio) && len >= 0)
                 len--;
+            if (len < 0) len = 0;
 
             activ_hadamard_kernels[func][len]
                 .SetArgument(output.Length)

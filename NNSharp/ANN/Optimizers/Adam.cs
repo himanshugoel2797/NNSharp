@@ -38,8 +38,10 @@ namespace NNSharp.ANN.Optimizers
 
             int len = o_len;
             var wpt = (KernelManager.MaxWPT - 1);
-            while (1 << wpt > len)
+            while ((1 << wpt > len | len / (1 << wpt) < KernelManager.Ratio) && wpt >= 0)
                 wpt--;
+            if (wpt < 0) wpt = 0;
+
             if (!adam_kernels.ContainsKey(len))
             {
                 adam_kernels[len] = dev.LoadKernel("adam", "", $"#define WPT ({1 << wpt})", $"#define LEN ({len})");
