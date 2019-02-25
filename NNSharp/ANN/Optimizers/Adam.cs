@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NNSharp.ANN.Kernels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,10 +19,19 @@ namespace NNSharp.ANN.Optimizers
             public Vector[] v_b;
         }
 
-        private float learning_rate;
+        private readonly float learning_rate;
         private readonly float beta_1;
         private readonly float beta_2;
         private Dictionary<ILayer, AdamParams> layers;
+
+#if GPU
+        private static Dictionary<int, Kernel> adam_kernels;
+
+        static Adam()
+        {
+            adam_kernels = new Dictionary<int, Kernel>();
+        }
+#endif
 
         public Adam(float learning_rate = 0.001f, float beta_1 = 0.9f, float beta_2 = 0.999f)
         {
@@ -31,10 +41,34 @@ namespace NNSharp.ANN.Optimizers
             this.beta_2 = beta_2;
         }
 
+        private void Optimize(Memory m, Memory v, Memory nabla, Memory o, int o_len)
+        {
+            var dev = Device.GetDevice();
+
+            int len = o_len;
+            var wpt = (KernelManager.MaxWPT - 1);
+            while (1 << wpt > len)
+                wpt--;
+            if (!adam_kernels.ContainsKey(len))
+            {
+                adam_kernels[len] = dev.LoadKernel("adam", "", $"#define WPT ({1 << wpt})", $"#define LEN ({len})");
+            }
+
+            adam_kernels[len]
+                .SetArgument(learning_rate)
+                .SetArgument(beta_1)
+                .SetArgument(beta_2)
+                .SetArgumentMemory(m)
+                .SetArgumentMemory(v)
+                .SetArgumentMemory(nabla)
+                .SetArgumentMemory(o);
+
+            dev.Dispatch(adam_kernels[len], new uint[] { (uint)(len / (1 << wpt) + 1), 1 }, null);
+        }
+
         public void Optimize(ILayer layer, int idx, Matrix w, Matrix nabla_w)
         {
             var @params = layers[layer];
-            //@params.m
 
             //m_w = beta_1 * m_w + (1 - beta_1) * nabla_w
             //v_w = beta_2 * v_w + (1 - beta_2) * nabla_w^2
@@ -48,7 +82,7 @@ namespace NNSharp.ANN.Optimizers
                 w.memory[i] -= (float)(learning_rate / (Math.Sqrt(@params.v_w[idx].memory[i] / (1 - beta_2)) + double.Epsilon)) * (@params.m_w[idx].memory[i] / (1 - beta_1));
             });
 #elif GPU
-#error TODO
+            Optimize(@params.m_w[idx].memory, @params.v_w[idx].memory, nabla_w.memory, w.memory, w.Width * w.Height);
 #endif
         }
 
@@ -68,7 +102,7 @@ namespace NNSharp.ANN.Optimizers
                 b.memory[i] -= (float)(learning_rate / (Math.Sqrt(@params.v_b[idx].memory[i] / (1 - beta_2)) + double.Epsilon)) * (@params.m_b[idx].memory[i] / (1 - beta_1));
             });
 #elif GPU
-#error TODO
+            Optimize(@params.m_b[idx].memory, @params.v_b[idx].memory, nabla_b.memory, b.memory, b.Length);
 #endif
         }
 
@@ -96,11 +130,6 @@ namespace NNSharp.ANN.Optimizers
                     layers[layer].v_b[i] = new Vector(b_len, MemoryFlags.ReadWrite, true);
                 }
             }
-        }
-
-        public void SetLearningRate(float v)
-        {
-            learning_rate = v;
         }
 
         public void Update(float curError)

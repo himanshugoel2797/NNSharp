@@ -17,6 +17,8 @@ namespace NNSharp.ANN.Kernels
 
         //Design goals: Clean way to compile specific shaders for activation functions and loss functions
         static Dictionary<Tuple<int, int>, Kernel[]> sgemv_kernels;
+        static Dictionary<int, Kernel[]> vec_sum_kernels;
+        static Dictionary<int, Kernel[]> vec_const_sum_kernels;
         static Dictionary<Tuple<int, int, int, int, int>, Kernel[]> conv_kernels;
         static Dictionary<string, Kernel[]> loss_kernels;
         static Dictionary<string, Kernel[]> activ_kernels;
@@ -26,7 +28,7 @@ namespace NNSharp.ANN.Kernels
 
         static Device device;
 
-        const int MaxWPT = 10;
+        public const int MaxWPT = 10;
 
         public static void Initialize()
         {
@@ -35,6 +37,8 @@ namespace NNSharp.ANN.Kernels
             activ_hadamard_kernels = new Dictionary<string, Kernel[]>();
             sgemv_kernels = new Dictionary<Tuple<int, int>, Kernel[]>();
             conv_kernels = new Dictionary<Tuple<int, int, int, int, int>, Kernel[]>();
+            vec_sum_kernels = new Dictionary<int, Kernel[]>();
+            vec_const_sum_kernels = new Dictionary<int, Kernel[]>();
 
             device = Device.GetDevice();
 
@@ -93,6 +97,53 @@ namespace NNSharp.ANN.Kernels
             }
             else
                 throw new Exception();
+        }
+        #endregion
+
+        #region Vector Const Sum
+        public static void VectorConstSum(Vector o, Vector i, int i_off)
+        {
+            var len = (MaxWPT - 1);
+            while (1 << len > o.Length)
+                len--;
+
+            if (!vec_const_sum_kernels.ContainsKey(o.Length))
+            {
+                var c_kerns = new Kernel[1];
+                c_kerns[0] = device.LoadKernel("vector_const_sum", "", $"#define WPT ({1 << len})", $"#define O_LEN ({o.Length})");
+                vec_const_sum_kernels[o.Length] = c_kerns;
+            }
+
+            vec_const_sum_kernels[o.Length][0]
+                .SetArgumentMemory(o.memory)
+                .SetArgumentMemory(i.memory)
+                .SetArgument(i_off);
+
+            device.Dispatch(vec_const_sum_kernels[o.Length][0], new uint[] { (uint)(o.Length / (1 << len) + 1), 1}, null);
+        }
+        #endregion
+
+        #region Vector Sum
+        public static void VectorSum(Vector o, int o_off, Vector i, int i_off, int i_len)
+        {
+            var len = (MaxWPT - 1);
+            while (1 << len > i_len)
+                len--;
+
+            if (!vec_sum_kernels.ContainsKey(i_len))
+            {
+                var c_kerns = new Kernel[1];
+                c_kerns[0] = device.LoadKernel("vector_sum", "", $"#define WPT ({1 << len})", $"#define I_LEN ({i_len})");
+                vec_sum_kernels[i_len] = c_kerns;
+            }
+
+            vec_sum_kernels[i_len][0]
+                .SetArgumentMemory(o.memory)
+                .SetArgumentMemory(i.memory)
+                .SetArgument(i_off)
+                .SetArgument(o_off);
+
+            device.Dispatch(vec_sum_kernels[i_len][0], new uint[] { (uint)(i_len / (1 << len) + 1), 1 }, null);
         }
         #endregion
 
@@ -160,116 +211,73 @@ namespace NNSharp.ANN.Kernels
 
         #region Convolution
         const int MemLimit = 400;
-        public static void Convolve(Vector input, int input_off, int inputSz, Matrix kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Vector output, int output_off, int outputSize)
+        public static void Convolve(Vector input, int input_off, int inputSz, Matrix kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Vector output, int output_off, int outputSize, bool rot180out)
         {
-            Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize);
+            Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize, rot180out);
         }
 
-        public static void Convolve(Vector input, int input_off, int inputSz, Vector kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Matrix output, int output_off, int outputSize)
+        public static void Convolve(Vector input, int input_off, int inputSz, Vector kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Matrix output, int output_off, int outputSize, bool rot180out)
         {
-            Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize);
+            Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize, rot180out);
         }
 
-        private static void Convolve(Memory input, int input_off, int inputSz, Memory kernel, int kernelOff, int kernelSz, bool rot180Kernel, int inputPadding, int stride, Memory output, int output_off, int outputSize)
+        private static void Convolve(Memory input, int input_off, int inputSz, Memory kernel, int kernelOff, int kernelSz, bool rot180Kernel, int inputPadding, int stride, Memory output, int output_off, int outputSize, bool rot180out)
         {
             var a_dims = new Tuple<int, int, int, int, int>(inputSz, kernelSz, inputPadding, outputSize, stride);
             if (!conv_kernels.ContainsKey(a_dims))
             {
-                var l_conv_kernels = new Kernel[]{
-                    device.LoadKernel("conv", "", $"#define IN_D ({a_dims.Item1})" , $"#define KERN_D ({a_dims.Item2})", $"#define IN_P ({a_dims.Item3})", $"#define OUT_D ({a_dims.Item4})", $"#define STRIDE ({a_dims.Item5})"),
-                    device.LoadKernel("conv", "", "#define ROT", $"#define IN_D ({a_dims.Item1})" , $"#define KERN_D ({a_dims.Item2})", $"#define IN_P ({a_dims.Item3})", $"#define OUT_D ({a_dims.Item4})", $"#define STRIDE ({a_dims.Item5})"),
-
-                    device.LoadKernel("conv_ksmall", "", $"#define IN_D ({a_dims.Item1})" , $"#define KERN_D ({a_dims.Item2})", $"#define IN_P ({a_dims.Item3})", $"#define OUT_D ({a_dims.Item4})", $"#define STRIDE ({a_dims.Item5})"),
-                    device.LoadKernel("conv_ksmall", "", "#define ROT", $"#define IN_D ({a_dims.Item1})" , $"#define KERN_D ({a_dims.Item2})", $"#define IN_P ({a_dims.Item3})", $"#define OUT_D ({a_dims.Item4})", $"#define STRIDE ({a_dims.Item5})"),
-
-                    device.LoadKernel("conv_ismall", "", $"#define IN_D ({a_dims.Item1})" , $"#define KERN_D ({a_dims.Item2})", $"#define IN_P ({a_dims.Item3})", $"#define OUT_D ({a_dims.Item4})", $"#define STRIDE ({a_dims.Item5})"),
-                    device.LoadKernel("conv_ismall", "", "#define ROT", $"#define IN_D ({a_dims.Item1})" , $"#define KERN_D ({a_dims.Item2})", $"#define IN_P ({a_dims.Item3})", $"#define OUT_D ({a_dims.Item4})", $"#define STRIDE ({a_dims.Item5})"),
+                var common_args = new string[]
+                {
+                    $"#define IN_D ({a_dims.Item1})" , $"#define KERN_D ({a_dims.Item2})", $"#define IN_P ({a_dims.Item3})", $"#define OUT_D ({a_dims.Item4})", $"#define STRIDE ({a_dims.Item5})"
                 };
-                conv_kernels[a_dims] = l_conv_kernels;
+
+                var diff_args = new string[][]
+                {
+                    new string[] { },
+                    new string[] { "", "#define ROT_KERN" },
+                    new string[] { "#define ROT_OUT", "" },
+                    new string[] { "#define ROT_OUT", "#define ROT_KERN" },
+                };
+
+                var conv_kern_names = new string[] { "conv", "conv_ksmall", "conv_ismall" };
+
+                var l_conv_kernels = new List<Kernel>();
+                for (int i = 0; i < conv_kern_names.Length; i++)
+                    for (int j = 0; j < diff_args.Length; j++)
+                    {
+                        var kern_args = new List<string>();
+                        kern_args.AddRange(diff_args[j]);
+                        kern_args.AddRange(common_args);
+
+                        l_conv_kernels.Add(device.LoadKernel(conv_kern_names[i], "", kern_args.ToArray()));
+                    }
+                conv_kernels[a_dims] = l_conv_kernels.ToArray();
             }
 
-            //SGEMV
-            //OPTIONS:
-            //(a dot b) + c
-            //(a^T dot b)
-            if (rot180Kernel)
-            {
-                if (kernelSz * kernelSz < MemLimit)
-                {
-                    conv_kernels[a_dims][3]
-                        .SetArgument(input_off)
-                        .SetArgument(kernelOff)
-                        .SetArgument(output_off)
-                        .SetArgumentMemory(input)
-                        .SetArgumentMemory(kernel)
-                        .SetArgumentMemory(output);
-
-                    device.Dispatch(conv_kernels[a_dims][3], new uint[] { (uint)outputSize, (uint)outputSize }, null);
-                }
-                else if (inputSz * inputSz < MemLimit)
-                {
-                    conv_kernels[a_dims][5]
-                        .SetArgument(input_off)
-                        .SetArgument(kernelOff)
-                        .SetArgument(output_off)
-                        .SetArgumentMemory(input)
-                        .SetArgumentMemory(kernel)
-                        .SetArgumentMemory(output);
-
-                    device.Dispatch(conv_kernels[a_dims][5], new uint[] { (uint)outputSize, (uint)outputSize }, null);
-                }
-                else
-                {
-                    conv_kernels[a_dims][1]
-                        .SetArgument(input_off)
-                        .SetArgument(kernelOff)
-                        .SetArgument(output_off)
-                        .SetArgumentMemory(input)
-                        .SetArgumentMemory(kernel)
-                        .SetArgumentMemory(output);
-
-                    device.Dispatch(conv_kernels[a_dims][1], new uint[] { (uint)outputSize, (uint)outputSize }, null);
-                }
-            }
+            int idx = 0;
+            if (kernelSz * kernelSz < MemLimit)
+                idx = 1 << 2;
+            else if (inputSz * inputSz < MemLimit)
+                idx = 3 << 2;
             else
-            {
-                if (kernelSz * kernelSz < MemLimit)
-                {
-                    conv_kernels[a_dims][2]
-                        .SetArgument(input_off)
-                        .SetArgument(kernelOff)
-                        .SetArgument(output_off)
-                        .SetArgumentMemory(input)
-                        .SetArgumentMemory(kernel)
-                        .SetArgumentMemory(output);
+                idx = 0;
 
-                    device.Dispatch(conv_kernels[a_dims][2], new uint[] { (uint)outputSize, (uint)outputSize }, null);
-                }
-                else if (inputSz * inputSz < MemLimit)
-                {
-                    conv_kernels[a_dims][4]
-                        .SetArgument(input_off)
-                        .SetArgument(kernelOff)
-                        .SetArgument(output_off)
-                        .SetArgumentMemory(input)
-                        .SetArgumentMemory(kernel)
-                        .SetArgumentMemory(output);
+            if (rot180Kernel)
+                idx |= 1;
 
-                    device.Dispatch(conv_kernels[a_dims][4], new uint[] { (uint)outputSize, (uint)outputSize }, null);
-                }
-                else
-                {
-                    conv_kernels[a_dims][0]
-                    .SetArgument(input_off)
-                        .SetArgument(kernelOff)
-                    .SetArgument(output_off)
-                    .SetArgumentMemory(input)
-                    .SetArgumentMemory(kernel)
-                    .SetArgumentMemory(output);
+            if (rot180out)
+                idx |= 2;
 
-                    device.Dispatch(conv_kernels[a_dims][0], new uint[] { (uint)outputSize, (uint)outputSize }, null);
-                }
-            }
+
+            conv_kernels[a_dims][idx]
+                .SetArgument(input_off)
+                .SetArgument(kernelOff)
+                .SetArgument(output_off)
+                .SetArgumentMemory(input)
+                .SetArgumentMemory(kernel)
+                .SetArgumentMemory(output);
+
+            device.Dispatch(conv_kernels[a_dims][idx], new uint[] { (uint)outputSize, (uint)outputSize }, null);
         }
         #endregion
 

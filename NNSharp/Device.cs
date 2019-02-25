@@ -42,7 +42,8 @@ namespace NNSharp
         {
             string src = "";
             for (int i = 0; i < defs.Length; i++)
-                src += defs[i] + "\n";
+                if (!string.IsNullOrEmpty(defs[i]))
+                    src += defs[i] + "\n";
 
             return CreateKernel(src + File.ReadAllText($"ANN/Kernels/CL/{file}.cl"), file, replace_val, out string err);
         }
@@ -64,7 +65,7 @@ namespace NNSharp
                 return kernel;
             }
             else
-            { 
+            {
                 throw new Exception(err);
             }
         }

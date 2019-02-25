@@ -4,7 +4,7 @@
 //OUT_D
 //STRIDE
 
-//ROT
+//ROT_KERN
 
 __kernel void conv_ksmall(const int IN_OFF,
                           const int KERN_OFF,
@@ -35,12 +35,16 @@ __kernel void conv_ksmall(const int IN_OFF,
             int i_y = row * STRIDE + (n1 - KERN_D / 2) + KERN_D / 2 - IN_P;
 
             if (i_x >= 0 && i_y >= 0 && i_x < IN_D && i_y < IN_D)
-#ifdef ROT
+#ifndef ROT_KERN
                 acc += kern_l[(KERN_D - 1 - n0) * KERN_D + (KERN_D - 1 - n1)] * i[IN_OFF + i_x * IN_D + i_y];
 #else
                 acc += kern_l[n0 * KERN_D + n1] * i[IN_OFF + i_x * IN_D + i_y];
 #endif
         }
 
+#ifdef ROT_OUT
+    o[OUT_OFF + (OUT_D - 1 - col) * OUT_D + (OUT_D - 1 - row)] += acc;
+#else
     o[OUT_OFF + col * OUT_D + row] += acc;
+#endif
 }

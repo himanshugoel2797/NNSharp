@@ -198,7 +198,7 @@ namespace NNSharp
         public static void Add(Vector a, Vector b, int off)
         {
 #if GPU
-#error TODO
+            KernelManager.VectorConstSum(a, b, off);
 #elif CPU
             //Parallel.For(0, b.memory.Length, (i) => b.memory[i] += a.memory[i]);
             unsafe
@@ -216,7 +216,7 @@ namespace NNSharp
         public static void VectorSum(Vector a, int a_off, Vector b, int b_off, int b_side)
         {
 #if GPU
-#error TODO
+            KernelManager.VectorSum(a, a_off, b, b_off, b_side * b_side);
 #elif CPU
             //Parallel.For(0, b.memory.Length, (i) => b.memory[i] += a.memory[i]);
             unsafe
