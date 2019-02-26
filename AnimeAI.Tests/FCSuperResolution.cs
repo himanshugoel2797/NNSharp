@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace AnimeAI.Tests
 {
-    class ConvSuperResolution
+    class FCSuperResolution
     {
         LayerContainer superres_enc_front, superres_enc_back, superres_dec_front, superres_dec_back;
 
@@ -26,29 +26,21 @@ namespace AnimeAI.Tests
         const int InputSize = StartSide * StartSide * 3;
         const int OutputSize = EndSide * EndSide * 3;
 
-        const int BatchSize = 32;
+        const int BatchSize = 5;
 
-        public ConvSuperResolution()
+        public FCSuperResolution()
         {
             superres_enc_front = InputLayer.Create(StartSide, 3);
             superres_enc_back = ActivationLayer.Create<LeakyReLU>();
 
             superres_enc_front.Append(
-                ConvLayer.Create(3, 16, 1).Append(
+                FCLayer.Create(16, 16).Append(
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16).Append(
+                FCLayer.Create(8, 8).Append(
                 ActivationLayer.Create<LeakyReLU>().Append(
-                PoolingLayer.Create(2, 2).Append(
-                ConvLayer.Create(3, 16).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 8).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 4).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                PoolingLayer.Create(2, 2).Append(
-                ConvLayer.Create(3, 4, 1).Append(
+                FCLayer.Create(4, 4).Append(
                     superres_enc_back
-            ))))))))))))));
+            ))))));
 
             superres_dec_front = InputLayer.Create(4, 4);
             superres_dec_back = ActivationLayer.Create<Tanh>();
@@ -56,31 +48,11 @@ namespace AnimeAI.Tests
             superres_dec_front.Append(
                 FCLayer.Create(8, 8).Append(
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 8, 2).Append(
+                FCLayer.Create(16, 8).Append(
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 8, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 8, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 8, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 8, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 5, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 5, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 5, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 5, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 3, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 3, 2).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 3, 2).Append(
+                FCLayer.Create(32, 3).Append(
                     superres_dec_back
-            ))))))))))))))))))))))))));
+            ))))));
 
             superres_enc_back.Append(superres_dec_front);
 
@@ -91,7 +63,7 @@ namespace AnimeAI.Tests
 
         public void Train()
         {
-            string dir = "NDConvAutoencoder_Data";
+            string dir = "NDFCAutoencoder_Data";
 
             Directory.CreateDirectory($@"{dir}");
             Directory.CreateDirectory($@"{dir}\Results");
@@ -103,7 +75,7 @@ namespace AnimeAI.Tests
             AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\emilia_(re_zero)", @"I:\Datasets\anime-faces\emilia_small");
             b_dataset.InitializeDataset();
 
-            Adam sgd = new Adam(0.001f);
+            Adam sgd = new Adam(0.0001f);
             Quadratic quadratic = new Quadratic();
 
             NRandom r = new NRandom(0);

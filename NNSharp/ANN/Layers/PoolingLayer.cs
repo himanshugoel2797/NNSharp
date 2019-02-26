@@ -61,17 +61,18 @@ namespace NNSharp.ANN.Layers
 
                 dev.Dispatch(error_layer, new uint[] { (uint)output_sz, (uint)output_sz }, null);
 #elif CPU
-                for(int x = 0; x < output_sz; x++)
+                for(int col = 0; col < output_sz; col++)
                 {
-                    for (int y = 0; y < output_sz; y++)
+                    for (int row = 0; row < output_sz; row++)
                     {
-                        for (int n0 = 0; n0 < filter_side; n0++)
-                            for (int n1 = 0; n1 < filter_side; n1++)
+                        for (int n_col = 0; n_col < filter_side; n_col++)
+                            for (int n_row = 0; n_row < filter_side; n_row++)
                             {
-                                int i_x = x * stride + (n0 - filter_side / 2) + filter_side / 2;
-                                int i_y = y * stride + (n1 - filter_side / 2) + filter_side / 2;
+                                int i_col = col * stride + (n_col - filter_side / 2) + filter_side / 2;
+                                int i_row = row * stride + (n_row - filter_side / 2) + filter_side / 2;
 
-                                BackwardError.memory[i * input_sz * input_sz + i_x * input_sz + i_y] += PoolCache.memory[i * input_sz * input_sz + i_x * input_sz + i_y] * prev_delta[0].memory[i * output_sz * output_sz + x * output_sz + y];
+                                //TODO: Make this use the appropriate Index calls
+                                BackwardError.memory[i * input_sz * input_sz + i_col * input_sz + i_row] += PoolCache.memory[i * input_sz * input_sz + i_col * input_sz + i_row] * prev_delta[0].memory[i * output_sz * output_sz + col * output_sz + row];
                             }
                     }
                 }

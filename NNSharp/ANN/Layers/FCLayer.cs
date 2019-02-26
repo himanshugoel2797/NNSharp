@@ -59,14 +59,14 @@ namespace NNSharp.ANN.Layers
         public Matrix[] Forward(Matrix[] input)
         {
             PrevInput = input[0];
-            Matrix.Mad(Weights, input[0], Biases, ResultMemory, true);
+            Matrix.Mad(Weights.Transpose(), input[0], Biases.Transpose(), ResultMemory, true);
             return new Matrix[] { ResultMemory };
         }
 
         public Matrix[] Propagate(Matrix[] prev_delta)
         {
             //Compute the error to propagate to the following layer
-            Matrix.Mad(Weights.Transpose(), prev_delta[0], null, CurDeltaMemory, true);
+            Matrix.Mad(Weights, prev_delta[0], null, CurDeltaMemory, true);
             return new Matrix[] { CurDeltaMemory };
         }
 
@@ -78,8 +78,8 @@ namespace NNSharp.ANN.Layers
         public void LayerError(Matrix[] prev_delta)
         {
             //Compute the current weights using prev_delta as the error
-            Matrix.Mad(prev_delta[0], PrevInput, null, WeightDelta, layerReset);
-            Matrix.Fmop(prev_delta[0], 1, null, 0, BiasDelta);
+            Matrix.Mad(PrevInput, prev_delta[0].Transpose(), null, WeightDelta, layerReset);
+            Matrix.Fmop(prev_delta[0], 1, BiasDelta, 1, BiasDelta);
 
             layerReset = false;
         }

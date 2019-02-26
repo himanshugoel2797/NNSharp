@@ -58,10 +58,10 @@ namespace NNSharp
         public int Index(int row, int col)
         {
 #if INDEXING_CHECK
-            if (row >= Rows | row <= 0)
+            if (row >= Rows | row < 0)
                 throw new Exception();
 
-            if (col >= Columns | col <= 0)
+            if (col >= Columns | col < 0)
                 throw new Exception();
 #endif
             return row * RowStride + col * ColumnStride;
@@ -228,7 +228,7 @@ namespace NNSharp
 #elif CPU
             Parallel.For(0, c.memory.Length, (i) =>
             {
-                c.memory[i] = (b == null ? 0 : b.memory[i]) * activ.CPUFunction(a.memory[i]);
+                c.memory[i] = (b == null ? 1 : b.memory[i]) * activ.CPUFunction(a.memory[i]);
             });
 #endif
         }

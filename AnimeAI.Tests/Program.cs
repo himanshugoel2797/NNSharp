@@ -11,7 +11,7 @@ namespace AnimeAI.Tests
         static void Main(string[] args)
         {
             NNSharp.ANN.Kernels.KernelManager.Initialize();
-            var superResolution = new ConvSuperResolution();
+            var superResolution = new FCSuperResolution();
             superResolution.Train();
         }
     }

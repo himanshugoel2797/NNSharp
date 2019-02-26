@@ -91,7 +91,6 @@
     <Compile Include="ANN\IWeightInitializer.cs" />
     <Compile Include="ANN\Kernels\KernelManager.cs" />
     <Compile Include="ANN\Layers\ActivationLayer.cs" />
-    <Compile Include="ANN\Layers\ConvLayerIC.cs" />
     <Compile Include="ANN\Layers\ConvLayer.cs" />
     <Compile Include="ANN\Layers\FCLayer.cs" />
     <Compile Include="ANN\Layers\InputLayer.cs" />
