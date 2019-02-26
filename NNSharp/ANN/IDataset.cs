@@ -9,9 +9,9 @@ namespace NNSharp.ANN
     public interface IDataset
     {
         void Initialize();
-        Vector LoadItem(string file);
+        Matrix LoadItem(string file);
 
-        void GetNextTrainingSet(out Vector input, out Vector output);
+        void GetNextTrainingSet(out Matrix input, out Matrix output);
 
         int GetInputSize();
         int GetOutputSize();

@@ -14,40 +14,40 @@ namespace NNSharp.ANN.Layers
         private int inputSide = 0, inputDepth = 0, inputSz = 0;
 
         [NonSerialized]
-        public Vector Activation, PrevInput, DeltaActivation;
+        public Matrix Activation, PrevInput, DeltaActivation;
 
         public ActivationLayer(IActivationFunction func)
         {
             ActivationFunction = func;
         }
 
-        public Vector[] Propagate(params Vector[] prev_delta)
+        public Matrix[] Propagate(params Matrix[] prev_delta)
         {
             if (prev_delta.Length != 1) throw new Exception();
 
             //Hadamard of prev_delta with derivative of PrevInput
-            Vector.HadamardAct(prev_delta[0], PrevInput, DeltaActivation, ActivationFunction.DerivActivation());
-            return new Vector[] { DeltaActivation };
+            Matrix.HadamardActivation(PrevInput, prev_delta[0], DeltaActivation, ActivationFunction.DerivActivation());
+            return new Matrix[] { DeltaActivation };
         }
 
-        public Vector[] GetLastDelta()
+        public Matrix[] GetLastDelta()
         {
-            return new Vector[] { DeltaActivation };
+            return new Matrix[] { DeltaActivation };
         }
 
-        public void LayerError(params Vector[] prev_delta)
+        public void LayerError(params Matrix[] prev_delta)
         {
 
         }
 
-        public Vector[] Forward(params Vector[] input)
+        public Matrix[] Forward(params Matrix[] input)
         {
             if (input.Length != 1) throw new Exception();
 
             PrevInput = input[0];
             //Run activation function
-            Vector.Activation(input[0], Activation, ActivationFunction.Activation());
-            return new Vector[] { Activation };
+            Matrix.HadamardActivation(input[0], null, Activation, ActivationFunction.Activation());
+            return new Matrix[] { Activation };
         }
 
         public void ResetLayerError() { }
@@ -71,8 +71,8 @@ namespace NNSharp.ANN.Layers
             inputSide = input_side;
             inputSz = input_side * input_side * input_depth;
 
-            Activation = new Vector(inputSz, MemoryFlags.ReadWrite, false);
-            DeltaActivation = new Vector(inputSz, MemoryFlags.ReadWrite, false);
+            Activation = new Matrix(inputSz, 1, MemoryFlags.ReadWrite, false);
+            DeltaActivation = new Matrix(inputSz, 1, MemoryFlags.ReadWrite, false);
         }
         #endregion
 

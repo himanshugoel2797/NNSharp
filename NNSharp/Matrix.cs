@@ -4,6 +4,7 @@ using OpenCL.Net.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,28 +14,76 @@ namespace NNSharp
     [Serializable]
     public class Matrix : ISerializable, IDisposable
     {
-        public int Width { get; private set; }
-        public int Height { get; private set; }
+        public int Columns { get; private set; }
+        public int Rows { get; private set; }
+
+        public int RowStride { get; private set; }
+        public int ColumnStride { get; private set; }
 
 #if GPU
         internal Memory memory;
-        internal MemoryFlags flags;
 #elif CPU
         internal float[] memory;
 #endif
 
-        public Matrix(int w, int h, MemoryFlags flags, bool zero)
+        public Matrix(int rows, int cols, MemoryFlags flags, bool zero)
         {
-            Width = w;
-            Height = h;
+            Columns = cols;
+            Rows = rows;
+
+            RowStride = cols;
+            ColumnStride = 1;
 #if GPU
-            this.flags = flags;
-            memory = Device.GetDevice().AllocateMemory(w * h, flags, zero);
+            memory = Device.GetDevice().AllocateMemory(cols * rows, flags, zero);
 #elif CPU
-            memory = new float[w * h];
+            memory = new float[cols * rows];
 #endif
         }
+#if GPU
+        private Matrix(Memory memory, int rows, int cols, int row_stride, int col_stride)
+#elif CPU
+        private Matrix(float[] memory, int rows, int cols, int row_stride, int col_stride)
+#endif
+        {
+            this.memory = memory;
+            Columns = cols;
+            Rows = rows;
 
+            RowStride = row_stride;
+            ColumnStride = col_stride;
+        }
+
+        #region Bounds
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int Index(int row, int col)
+        {
+#if INDEXING_CHECK
+            if (row >= Rows | row <= 0)
+                throw new Exception();
+
+            if (col >= Columns | col <= 0)
+                throw new Exception();
+#endif
+            return row * RowStride + col * ColumnStride;
+        }
+
+        public Matrix Reshape(int rows, int cols)
+        {
+            //TODO: maybe provide strides directly, to allow maintaining transposes
+            //Dims:    (2,3).T = (3,2).Reshape(1,6) = (1,6)
+            //Strides: (3,1)   = (1,3)              = (6,1)
+            //[[1, 2, 3],[4, 5, 6]].T = [[1, 4],[2, 5],[3, 6]].R = [[1, 4, 2, 5, 3, 6]]
+            //[[1, 2, 3],[4, 5, 6]].R = [[1, 2, 3, 4, 5, 6]].T = [[1],[2],[3],[4],[5],[6]]
+            return new Matrix(memory, rows, cols, cols, rows);
+        }
+
+        public Matrix Transpose()
+        {
+            return new Matrix(memory, Columns, Rows, ColumnStride, RowStride);
+        }
+        #endregion
+
+        #region Read/Write
         public void Write(float[] data)
         {
 #if GPU
@@ -76,145 +125,114 @@ namespace NNSharp
             return memory;
 #endif
         }
+        #endregion
 
-        public static void Madd(Matrix a, Vector b, Vector c, Vector d)
+        #region Operations
+        /// <summary>
+        /// O = (A dot B) + C
+        /// </summary>
+        /// <param name="a">NxM dimensional input matrix</param>
+        /// <param name="b">MxP dimensional input matrix</param>
+        /// <param name="c">Px1 dimensional optional input matrix</param>
+        /// <param name="o">NxP dimensional output matrix</param>
+        public static void Mad(Matrix a, Matrix b, Matrix c, Matrix o, bool reset)
         {
-            if (a.Width != b.Length)
+            if (a.Columns != b.Rows)
                 throw new ArgumentException();
 
-            if (a.Height != c.Length)
+            if (a.Rows != o.Rows)
+                throw new ArgumentException();
+            if (b.Columns != o.Columns)
                 throw new ArgumentException();
 
-            if (a.Height != d.Length)
+            if (c != null && c.Rows != b.Columns)
                 throw new ArgumentException();
 
 #if GPU
-            KernelManager.SGemv(a, b, false, c, KernelManager.SGemvOperation.Add, d);
+#error TODO
+            //KernelManager.SGemv(a, b, false, c, KernelManager.SGemvOperation.Add, d);
 #elif CPU
-            Parallel.For(0, a.Height, (i) =>
-           {
-               float acc = 0;
-               for (int j = 0; j < a.Width; j++)
-               {
-                   acc += a.memory[i + a.Height * j] * b.memory[j];
-               }
-               d.memory[i] = acc + c.memory[i];
-           });
-#endif
-        }
-
-        public static void Mult(Matrix a, float rate)
-        {
-#if GPU
-            if (rate == 0)
+            Parallel.For(0, a.Rows, (i) =>
             {
-                var dev = Device.GetDevice();
-                dev.Fill(a.memory, 0, a.Width * a.Height * sizeof(float), 0);
-            }
-            else
-                KernelManager.Fmop(a, 0, a, rate);
-#elif CPU
-            if (rate == 1)
-                return;
-
-            if (rate == 0)
-            {
-                Array.Clear(a.memory, 0, a.memory.Length);
-                return;
-            }
-
-            //Parallel.For(0, a.memory.Length, (i) => a.memory[i] *= rate);
-            unsafe
-            {
-                fixed (float* a_p = a.memory)
+                for (int j = 0; j < b.Columns; j++)
                 {
-                    for (int i = 0; i < a.memory.Length; i++)
-                        a_p[i] *= rate;
-                }
-            }
-#endif
-        }
+                    float acc = 0;
+                    for (int k = 0; k < a.Columns; k++)
+                        acc += a.memory[a.Index(i, k)] * b.memory[b.Index(k, j)];
 
-        public static void TMmult(Matrix a, Vector b, Vector d)
-        {
-            if (a.Height != b.Length)
-                throw new ArgumentException();
-
-            if (a.Width != d.Length)
-                throw new ArgumentException();
-
-#if GPU
-            KernelManager.SGemv(a, b, true, null, KernelManager.SGemvOperation.None, d);
-#elif CPU
-            /*float[] tmp = new float[a.memory.Length];
-            for (int j = 0; j < a.Width; j++)
-                for (int i = 0; i < a.Height; i++)
-                    tmp[j + i * a.Width] = a.memory[i + a.Height * j];
-
-            //var tmp = a.memory;
-
-            Parallel.For(0, a.Width, (i) =>
-            {
-                float acc = 0;
-                for (int j = 0; j < a.Height; j++)
-                {
-                    acc += tmp[i + a.Width * j] * b.memory[j];
-                }
-                d.memory[i] = acc;
-            });
-            return;*/
-
-            Parallel.For(0, a.Width, (j) =>
-            {
-                float acc = 0;
-                for (int i = 0; i < a.Height; i++)
-                {
-                    acc += a.memory[i + a.Height * j] * b.memory[i];
-                }
-                d.memory[j] = acc;
-            });
-#endif
-        }
-
-        public static void MatrixProduct(Vector a, Vector b, Matrix c, bool zero)
-        {
-            if (a.Length != c.Height)
-                throw new ArgumentException();
-
-            if (b.Length != c.Width)
-                throw new ArgumentException();
-
-#if GPU
-            KernelManager.InnerProduct(a, b, c, zero);
-#elif CPU
-            Parallel.For(0, b.Length, (j) =>
-            {
-                for (int i = 0; i < a.Length; i++)
-                {
-                    if (zero)
-                        c.memory[i + j * c.Height] = a.memory[i] * b.memory[j];
+                    if (reset)
+                        o.memory[o.Index(i, j)] = acc + (c == null ? 0 : c.memory[c.Index(j, 0)]);
                     else
-                        c.memory[i + j * c.Height] += a.memory[i] * b.memory[j];
+                        o.memory[o.Index(i, j)] += acc + (c == null ? 0 : c.memory[c.Index(j, 0)]);
                 }
             });
 #endif
         }
 
-        public static void MSubSelf(Matrix a, Matrix b, float rate)
+        /// <summary>
+        /// C = B * rate_b + A * rate_a
+        /// </summary>
+        /// <param name="a">NxM dimensional optional input matrix</param>
+        /// <param name="rate_a"></param>
+        /// <param name="b">NxM dimensional optional input matrix</param>
+        /// <param name="rate_b"></param>
+        /// <param name="c">NxM dimensional output matrix</param>
+        public static void Fmop(Matrix a, float rate_a, Matrix b, float rate_b, Matrix c)
         {
-            if (a.Width != b.Width)
+            if (a != null && a.Columns != c.Columns)
+                throw new ArgumentException();
+            if (a != null && a.Rows != c.Rows)
                 throw new ArgumentException();
 
-            if (a.Height != b.Height)
+            if (b != null && b.Columns != c.Columns)
+                throw new ArgumentException();
+            if (b != null && b.Rows != c.Rows)
                 throw new ArgumentException();
 
 #if GPU
-            //B = B - A * rate
-            KernelManager.Fmop(a, -rate, b, 1);
+#error TODO
 #elif CPU
-            Parallel.For(0, b.memory.Length, (i) => b.memory[i] -= a.memory[i] * rate);
+            Parallel.For(0, c.Rows, (i) =>
+            {
+                for (int j = 0; j < c.Columns; j++)
+                {
+                    c.memory[c.Index(i, j)] = (a == null ? 0 : a.memory[a.Index(i, j)]) * rate_a + (b == null ? 0 : b.memory[b.Index(i, j)]) * rate_b;
+                }
+            });
 #endif
         }
+
+        /// <summary>
+        /// C = activ(A) * B
+        /// </summary>
+        /// <param name="a">NxM dimensional input matrix</param>
+        /// <param name="b">NxM dimensional optional input matrix</param>
+        /// <param name="c">NxM dimensional output matrix</param>
+        /// <param name="activ">Activation function to apply</param>
+        public static void HadamardActivation(Matrix a, Matrix b, Matrix c, ANN.ActivationFunctionInfo activ)
+        {
+            if (a.Columns != c.Columns)
+                throw new ArgumentException();
+
+            if (a.Rows != c.Rows)
+                throw new ArgumentException();
+
+            if (b != null && b.Columns != c.Columns)
+                throw new ArgumentException();
+
+            if (b != null && b.Rows != c.Rows)
+                throw new ArgumentException();
+
+#if GPU
+            KernelManager.HadamardActiv(a, b, c, activ);
+#elif CPU
+            Parallel.For(0, c.memory.Length, (i) =>
+            {
+                c.memory[i] = (b == null ? 0 : b.memory[i]) * activ.CPUFunction(a.memory[i]);
+            });
+#endif
+        }
+        #endregion
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
@@ -225,14 +243,14 @@ namespace NNSharp
             var mData = memory;
 #endif
             info.AddValue("data", mData, mData.GetType());
-            info.AddValue("width", Width);
-            info.AddValue("height", Height);
+            info.AddValue("width", Columns);
+            info.AddValue("height", Rows);
         }
 
         public Matrix(SerializationInfo info, StreamingContext context)
         {
-            Width = info.GetInt32("width");
-            Height = info.GetInt32("height");
+            Columns = info.GetInt32("width");
+            Rows = info.GetInt32("height");
 
             var mData = (float[])info.GetValue("data", typeof(float[]));
 

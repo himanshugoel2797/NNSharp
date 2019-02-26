@@ -63,7 +63,7 @@ namespace NNSharp.ANN.Kernels
         //Generate specific kernels optimized for the dimension of the matrices in question
         //Matrix-Vector multiplication is memory bound
         //Have a single function that takes options for transposing, additional operations and activation functions
-        public static void SGemv(Matrix a, Vector b, bool a_trans, Vector opt_c, SGemvOperation op, Vector output)
+        public static void SGemv(Matrix a, Matrix b, bool a_trans, Matrix opt_c, SGemvOperation op, Matrix output)
         {
             Tuple<int, int> a_dims = new Tuple<int, int>(a.Width, a.Height);
             if (!sgemv_kernels.ContainsKey(a_dims))
@@ -105,7 +105,7 @@ namespace NNSharp.ANN.Kernels
         #endregion
 
         #region Vector Const Sum
-        public static void VectorConstSum(Vector o, Vector i, int i_off)
+        public static void VectorConstSum(Matrix o, Matrix i, int i_off)
         {
             var len = (MaxWPT - 1);
             while ((1 << len > o.Length | o.Length / (1 << len) < Ratio) && len >= 0)
@@ -129,7 +129,7 @@ namespace NNSharp.ANN.Kernels
         #endregion
 
         #region Vector Sum
-        public static void VectorSum(Vector o, int o_off, Vector i, int i_off, int i_len)
+        public static void VectorSum(Matrix o, int o_off, Matrix i, int i_off, int i_len)
         {
             var len = (MaxWPT - 1);
             while ((1 << len > i_len | i_len / (1 << len) < Ratio) && len >= 0)
@@ -171,7 +171,7 @@ namespace NNSharp.ANN.Kernels
             device.Dispatch(fmop_kernels[len], new uint[] { (uint)(a_len / (1 << len)) + 1, 1 }, null);
         }
 
-        public static void Fmop(Vector a, float rate_a, Vector b, float rate_b)
+        public static void Fmop(Matrix a, float rate_a, Matrix b, float rate_b)
         {
             Fmop(a.memory, rate_a, b.memory, rate_b, a.Length);
         }
@@ -182,7 +182,7 @@ namespace NNSharp.ANN.Kernels
         }
         #endregion
 
-        public static void Loss(Vector expectedOutput, Vector output, Vector loss, string func)
+        public static void Loss(Matrix expectedOutput, Matrix output, Matrix loss, string func)
         {
             if (!loss_kernels.ContainsKey(func))
             {
@@ -205,7 +205,7 @@ namespace NNSharp.ANN.Kernels
             device.Dispatch(loss_kernels[func][len], new uint[] { (uint)(expectedOutput.Length / (1 << len) + 1), 1 }, null);
         }
 
-        public static void InnerProduct(Vector a, Vector b, Matrix c, bool zero)
+        public static void InnerProduct(Matrix a, Matrix b, Matrix c, bool zero)
         {
             inner_prod[zero ? 1 : 0]
                 .SetArgument(c.Width)
@@ -219,12 +219,12 @@ namespace NNSharp.ANN.Kernels
 
         #region Convolution
         const int MemLimit = 400;
-        public static void Convolve(Vector input, int input_off, int inputSz, Matrix kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Vector output, int output_off, int outputSize, bool rot180out, bool zero)
+        public static void Convolve(Matrix input, int input_off, int inputSz, Matrix kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Matrix output, int output_off, int outputSize, bool rot180out, bool zero)
         {
             Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize, rot180out, zero);
         }
 
-        public static void Convolve(Vector input, int input_off, int inputSz, Vector kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Matrix output, int output_off, int outputSize, bool rot180out, bool zero)
+        public static void Convolve(Matrix input, int input_off, int inputSz, Matrix kernel, int kernel_off, int kernel_side, bool rot180Kernel, int inputPadding, int stride, Matrix output, int output_off, int outputSize, bool rot180out, bool zero)
         {
             Convolve(input.memory, input_off, inputSz, kernel.memory, kernel_off, kernel_side, rot180Kernel, inputPadding, stride, output.memory, output_off, outputSize, rot180out, zero);
         }
@@ -297,7 +297,7 @@ namespace NNSharp.ANN.Kernels
         #endregion
 
         #region Activations
-        public static void Activ(Vector input, Vector output, ActivationFunctionInfo func_info)
+        public static void Activ(Matrix input, Matrix output, ActivationFunctionInfo func_info)
         {
             string func = func_info.GPUFunction;
 
@@ -321,7 +321,7 @@ namespace NNSharp.ANN.Kernels
             device.Dispatch(activ_kernels[func][len], new uint[] { (uint)(output.Length / (1 << len) + 1), 1 }, null);
         }
 
-        public static void HadamardActiv(Vector a, Vector input, Vector output, ActivationFunctionInfo func_info)
+        public static void HadamardActiv(Matrix a, Matrix input, Matrix output, ActivationFunctionInfo func_info)
         {
             string func = func_info.GPUFunction;
 

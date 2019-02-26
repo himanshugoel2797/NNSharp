@@ -8,12 +8,12 @@ namespace NNSharp.ANN
 {
     public interface ILayer
     {
-        Vector[] Forward(params Vector[] input);
+        Matrix[] Forward(params Matrix[] input);
 
-        Vector[] Propagate(params Vector[] prev_delta);
-        Vector[] GetLastDelta();
+        Matrix[] Propagate(params Matrix[] prev_delta);
+        Matrix[] GetLastDelta();
 
-        void LayerError(params Vector[] prev_delta);
+        void LayerError(params Matrix[] prev_delta);
         void Learn(IOptimizer opt);
         void ResetLayerError();
 

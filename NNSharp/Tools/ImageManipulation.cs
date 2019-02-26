@@ -106,10 +106,10 @@ namespace NNSharp.Tools
             return cut_paths.ToArray();
         }
 
-        public static void SaveImage(string file, Vector img_vec, int Side)
+        public static void SaveImage(string file, Matrix img_vec, int Side)
         {
             var bmp = new Bitmap(Side, Side);
-            float[] img = new float[img_vec.Length];
+            float[] img = new float[img_vec.Rows * img_vec.Columns];
             img_vec.Read(img);
 
             float max = float.MinValue;

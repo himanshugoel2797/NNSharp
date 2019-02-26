@@ -15,25 +15,25 @@ namespace NNSharp.ANN.Layers
         private int input_sz, input_dpth;
 
         public Matrix Weights;
-        public Vector Biases;
+        public Matrix Biases;
 
         [NonSerialized]
         private bool layerReset;
 
         [NonSerialized]
-        public Vector ResultMemory;
+        public Matrix ResultMemory;
 
         [NonSerialized]
-        public Vector CurDeltaMemory;
+        public Matrix CurDeltaMemory;
 
         [NonSerialized]
         public Matrix WeightDelta;
 
         [NonSerialized]
-        private Vector BiasDelta;
+        private Matrix BiasDelta;
 
         [NonSerialized]
-        private Vector PrevInput;
+        private Matrix PrevInput;
 
         public FCLayer(int k, int output_dpth)
         {
@@ -45,41 +45,41 @@ namespace NNSharp.ANN.Layers
         public void Learn(IOptimizer optimizer)
         {
             optimizer.RegisterLayer(this, 1, input_sz * input_sz * input_dpth, k * k * output_dpth, 1, k * k * output_dpth);
-            optimizer.Optimize(this, 0, Weights, WeightDelta);
-            optimizer.Optimize(this, 0, Biases, BiasDelta);
+            optimizer.OptimizeWeights(this, 0, Weights, WeightDelta);
+            optimizer.OptimizeBiases(this, 0, Biases, BiasDelta);
         }
 
         public void ResetLayerError()
         {
             //Clear the biases and deltas
             layerReset = true;
-            Vector.Mult(BiasDelta, 0);
+            Matrix.Fmop(null, 0, null, 0, BiasDelta);
         }
 
-        public Vector[] Forward(Vector[] input)
+        public Matrix[] Forward(Matrix[] input)
         {
             PrevInput = input[0];
-            Matrix.Madd(Weights, input[0], Biases, ResultMemory);
-            return new Vector[] { ResultMemory };
+            Matrix.Mad(Weights, input[0], Biases, ResultMemory, true);
+            return new Matrix[] { ResultMemory };
         }
 
-        public Vector[] Propagate(Vector[] prev_delta)
+        public Matrix[] Propagate(Matrix[] prev_delta)
         {
             //Compute the error to propagate to the following layer
-            Matrix.TMmult(Weights, prev_delta[0], CurDeltaMemory);
-            return new Vector[] { CurDeltaMemory };
+            Matrix.Mad(Weights.Transpose(), prev_delta[0], null, CurDeltaMemory, true);
+            return new Matrix[] { CurDeltaMemory };
         }
 
-        public Vector[] GetLastDelta()
+        public Matrix[] GetLastDelta()
         {
-            return new Vector[] { CurDeltaMemory };
+            return new Matrix[] { CurDeltaMemory };
         }
 
-        public void LayerError(Vector[] prev_delta)
+        public void LayerError(Matrix[] prev_delta)
         {
             //Compute the current weights using prev_delta as the error
-            Matrix.MatrixProduct(prev_delta[0], PrevInput, WeightDelta, layerReset);
-            Vector.Add(BiasDelta, prev_delta[0]);
+            Matrix.Mad(prev_delta[0], PrevInput, null, WeightDelta, layerReset);
+            Matrix.Fmop(prev_delta[0], 1, null, 0, BiasDelta);
 
             layerReset = false;
         }
@@ -101,28 +101,28 @@ namespace NNSharp.ANN.Layers
             input_dpth = dpth;
 
             if (Weights == null) Weights = new Matrix(sz * sz * input_dpth, k * k * output_dpth, MemoryFlags.ReadWrite, false);
-            if (Biases == null) Biases = new Vector(k * k * output_dpth, MemoryFlags.ReadWrite, false);
+            if (Biases == null) Biases = new Matrix(k * k * output_dpth, 1, MemoryFlags.ReadWrite, false);
 
-            BiasDelta = new Vector(k * k * output_dpth, MemoryFlags.ReadWrite, false);
+            BiasDelta = new Matrix(k * k * output_dpth, 1, MemoryFlags.ReadWrite, false);
             WeightDelta = new Matrix(sz * sz * input_dpth, k * k * output_dpth, MemoryFlags.ReadWrite, false);
-            ResultMemory = new Vector(k * k * output_dpth, MemoryFlags.ReadWrite, false);
-            CurDeltaMemory = new Vector(sz * sz * input_dpth, MemoryFlags.ReadWrite, false);
+            ResultMemory = new Matrix(k * k * output_dpth, 1, MemoryFlags.ReadWrite, false);
+            CurDeltaMemory = new Matrix(sz * sz * input_dpth, 1, MemoryFlags.ReadWrite, false);
         }
         #endregion
 
         #region IWeightInitializable
         public void SetWeights(IWeightInitializer weightInitializer)
         {
-            float[] m_ws = new float[Weights.Height];
-            float[] b_ws = new float[Biases.Length];
+            float[] m_ws = new float[Weights.Rows];
+            float[] b_ws = new float[Biases.Rows];
 
             //for (int j = 0; j < Weights.Width; j++)
-            Parallel.For(0, Weights.Width, (j) =>
+            Parallel.For(0, Weights.Columns, (j) =>
             {
-                for (int i = 0; i < Weights.Height; i++)
-                    m_ws[i] = (float)weightInitializer.GetWeight(Weights.Width, Weights.Height); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
+                for (int i = 0; i < Weights.Rows; i++)
+                    m_ws[i] = (float)weightInitializer.GetWeight(Weights.Columns, Weights.Rows); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
 
-                Weights.Write(m_ws, j * Weights.Height);
+                Weights.Write(m_ws, j * Weights.Rows);
             }
             );
 

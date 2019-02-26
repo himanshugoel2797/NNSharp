@@ -15,14 +15,14 @@ namespace NNSharp.ANN.Optimizers
         {
         }
 
-        public void Optimize(ILayer layer, int idx, Matrix w, Matrix nabla_w)
+        public void OptimizeWeights(ILayer layer, int idx, Matrix w, Matrix nabla_w)
         {
-            Matrix.MSubSelf(nabla_w, w, r);
+            Matrix.Fmop(nabla_w, -r, w, 1, w);
         }
 
-        public void Optimize(ILayer layer, int idx, Vector b, Vector nabla_b)
+        public void OptimizeBiases(ILayer layer, int idx, Matrix b, Matrix nabla_b)
         {
-            Vector.MSubSelf(nabla_b, b, r);
+            Matrix.Fmop(nabla_b, -r, b, 1, b);
         }
 
         public void RegisterLayer(ILayer layer, int w_cnt, int ww_len, int wh_len, int b_cnt, int b_len)

@@ -67,17 +67,17 @@ namespace NNSharp.ANN.NetworkBuilder
         #endregion
 
         #region Forward Propagation
-        public abstract Vector[] Forward(params Vector[] input);
-        public abstract Vector[] ForwardPropagate(params Vector[] input);
+        public abstract Matrix[] Forward(params Matrix[] input);
+        public abstract Matrix[] ForwardPropagate(params Matrix[] input);
         #endregion
 
         #region Backward Propagation
         #region Gradients Between Layers
-        public abstract Vector[] ComputeGradients(params Vector[] prev_delta);
+        public abstract Matrix[] ComputeGradients(params Matrix[] prev_delta);
         #endregion
 
         #region Gradients Per Layer
-        public abstract void ComputeLayerErrors(params Vector[] prev_delta);
+        public abstract void ComputeLayerErrors(params Matrix[] prev_delta);
         public abstract void ResetLayerErrors();
         public abstract void UpdateLayers(IOptimizer optimizer);
         #endregion

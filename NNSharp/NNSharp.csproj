@@ -34,7 +34,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x64\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;GPU,DELAY_COMPILE,BENCHMARK</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;CPU,DELAY_COMPILE,BENCHMARK,INDEXING_CHECK</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
@@ -91,6 +91,7 @@
     <Compile Include="ANN\IWeightInitializer.cs" />
     <Compile Include="ANN\Kernels\KernelManager.cs" />
     <Compile Include="ANN\Layers\ActivationLayer.cs" />
+    <Compile Include="ANN\Layers\ConvLayerIC.cs" />
     <Compile Include="ANN\Layers\ConvLayer.cs" />
     <Compile Include="ANN\Layers\FCLayer.cs" />
     <Compile Include="ANN\Layers\InputLayer.cs" />
@@ -111,7 +112,6 @@
     <Compile Include="Memory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Tools\NRandom.cs" />
-    <Compile Include="Vector.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ANN\Kernels\CL\error_maxpool.cl">
@@ -127,6 +127,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="ANN\Kernels\CL\conv.cl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ANN\Kernels\CL\gemm.cl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="ANN\Kernels\CL\uniform_init.cl">

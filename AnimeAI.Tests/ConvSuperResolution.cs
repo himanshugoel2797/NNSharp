@@ -34,7 +34,7 @@ namespace AnimeAI.Tests
             superres_enc_back = ActivationLayer.Create<LeakyReLU>();
 
             superres_enc_front.Append(
-                ConvLayer.Create(3, 16).Append(
+                ConvLayerIC.Create(3, 16, 1).Append(
                 ActivationLayer.Create<LeakyReLU>().Append(
                 ConvLayer.Create(3, 16).Append(
                 ActivationLayer.Create<LeakyReLU>().Append(

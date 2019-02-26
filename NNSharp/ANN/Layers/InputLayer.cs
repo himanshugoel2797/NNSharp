@@ -13,7 +13,7 @@ namespace NNSharp.ANN.Layers
         private int inputSz, inputDpth;
 
         [NonSerialized]
-        private Vector[] prevDelta;
+        private Matrix[] prevDelta;
 
         public InputLayer(int input_side, int input_depth)
         {
@@ -21,20 +21,20 @@ namespace NNSharp.ANN.Layers
             inputDpth = input_depth;
         }
 
-        public Vector[] Propagate(Vector[] prev_delta)
+        public Matrix[] Propagate(Matrix[] prev_delta)
         {
             prevDelta = prev_delta;
             return prev_delta;
         }
 
-        public Vector[] GetLastDelta()
+        public Matrix[] GetLastDelta()
         {
             return prevDelta;
         }
 
-        public void LayerError(Vector[] prev_delta) { }
+        public void LayerError(Matrix[] prev_delta) { }
 
-        public Vector[] Forward(Vector[] input)
+        public Matrix[] Forward(Matrix[] input)
         {
             return input;
         }

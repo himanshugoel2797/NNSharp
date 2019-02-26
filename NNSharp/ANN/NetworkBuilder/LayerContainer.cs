@@ -65,14 +65,14 @@ namespace NNSharp.ANN.NetworkBuilder
         #endregion
 
         #region Forward Propagation
-        public override Vector[] Forward(params Vector[] input)
+        public override Matrix[] Forward(params Matrix[] input)
         {
             return CurrentLayer.Forward(input);
         }
 
-        public override Vector[] ForwardPropagate(params Vector[] input)
+        public override Matrix[] ForwardPropagate(params Matrix[] input)
         {
-            List<Vector> rets = new List<Vector>();
+            List<Matrix> rets = new List<Matrix>();
             var result = Forward(input);
             if (OutputLayers.Count == 0)
                 return result;
@@ -85,9 +85,9 @@ namespace NNSharp.ANN.NetworkBuilder
 
         #region Backward Propagation
         #region Gradients Between Layers
-        public override Vector[] ComputeGradients(params Vector[] prev_delta)
+        public override Matrix[] ComputeGradients(params Matrix[] prev_delta)
         {
-            List<Vector> rets = new List<Vector>();
+            List<Matrix> rets = new List<Matrix>();
             var delta = CurrentLayer.Propagate(prev_delta);
             if (InputLayers.Count == 0)
                 return delta;
@@ -99,7 +99,7 @@ namespace NNSharp.ANN.NetworkBuilder
         #endregion
 
         #region Gradients Per Layer
-        public override void ComputeLayerErrors(params Vector[] prev_delta)
+        public override void ComputeLayerErrors(params Matrix[] prev_delta)
         {
             CurrentLayer.LayerError(prev_delta);
             var delta = CurrentLayer.GetLastDelta();

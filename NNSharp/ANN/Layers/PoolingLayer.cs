@@ -17,13 +17,13 @@ namespace NNSharp.ANN.Layers
         private int output_sz;
 
         [NonSerialized]
-        private Vector CurOutput;
+        private Matrix CurOutput;
 
         [NonSerialized]
-        private Vector PoolCache;
+        private Matrix PoolCache;
 
         [NonSerialized]
-        private Vector BackwardError;
+        private Matrix BackwardError;
 
         [NonSerialized]
         private Kernel fwd_layer;
@@ -37,9 +37,9 @@ namespace NNSharp.ANN.Layers
             this.filter_side = filter_side;
         }
 
-        public Vector[] Propagate(Vector[] prev_delta)
+        public Matrix[] Propagate(Matrix[] prev_delta)
         {
-            Vector.Mult(BackwardError, 0);
+            Matrix.Fmop(null, 0, null, 0, BackwardError);
 #if GPU
             var dev = Device.GetDevice();
 
@@ -76,17 +76,17 @@ namespace NNSharp.ANN.Layers
 #endif
             }
 
-            return new Vector[] { BackwardError };
+            return new Matrix[] { BackwardError };
         }
 
-        public Vector[] GetLastDelta()
+        public Matrix[] GetLastDelta()
         {
-            return new Vector[] { BackwardError };
+            return new Matrix[] { BackwardError };
         }
 
-        public void LayerError(Vector[] prev_delta) { }
+        public void LayerError(Matrix[] prev_delta) { }
 
-        public Vector[] Forward(Vector[] input)
+        public Matrix[] Forward(Matrix[] input)
         {
 #if GPU
             var dev = Device.GetDevice();
@@ -136,7 +136,7 @@ namespace NNSharp.ANN.Layers
 #endif
             }
 
-            return new Vector[] { CurOutput };
+            return new Matrix[] { CurOutput };
         }
 
         public void Learn(IOptimizer opt)
@@ -165,9 +165,9 @@ namespace NNSharp.ANN.Layers
             input_depth = input_dpth;
             output_sz = 1 + (sz - filter_side) / stride;
 
-            CurOutput = new Vector(output_sz * output_sz * input_depth, MemoryFlags.ReadWrite, true);
-            PoolCache = new Vector(input_sz * input_sz * input_depth, MemoryFlags.ReadWrite, true);
-            BackwardError = new Vector(input_sz * input_sz * input_depth, MemoryFlags.ReadWrite, true);
+            CurOutput = new Matrix(output_sz * output_sz * input_depth, 1, MemoryFlags.ReadWrite, true);
+            PoolCache = new Matrix(input_sz * input_sz * input_depth, 1, MemoryFlags.ReadWrite, true);
+            BackwardError = new Matrix(input_sz * input_sz * input_depth, 1, MemoryFlags.ReadWrite, true);
         }
         #endregion
 

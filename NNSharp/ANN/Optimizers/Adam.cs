@@ -15,8 +15,8 @@ namespace NNSharp.ANN.Optimizers
             public Matrix[] m_w;
             public Matrix[] v_w;
 
-            public Vector[] m_b;
-            public Vector[] v_b;
+            public Matrix[] m_b;
+            public Matrix[] v_b;
         }
 
         private readonly float learning_rate;
@@ -71,7 +71,7 @@ namespace NNSharp.ANN.Optimizers
             this.beta_2 = beta_2;
         }
 
-        public void Optimize(ILayer layer, int idx, Matrix w, Matrix nabla_w)
+        public void OptimizeWeights(ILayer layer, int idx, Matrix w, Matrix nabla_w)
         {
             var @params = layers[layer];
 
@@ -91,7 +91,7 @@ namespace NNSharp.ANN.Optimizers
 #endif
         }
 
-        public void Optimize(ILayer layer, int idx, Vector b, Vector nabla_b)
+        public void OptimizeBiases(ILayer layer, int idx, Matrix b, Matrix nabla_b)
         {
             var @params = layers[layer];
 
@@ -119,8 +119,8 @@ namespace NNSharp.ANN.Optimizers
                 {
                     m_w = new Matrix[w_cnt],
                     v_w = new Matrix[w_cnt],
-                    m_b = new Vector[b_cnt],
-                    v_b = new Vector[b_cnt]
+                    m_b = new Matrix[b_cnt],
+                    v_b = new Matrix[b_cnt]
                 };
 
                 for (int i = 0; i < w_cnt; i++)
@@ -131,8 +131,8 @@ namespace NNSharp.ANN.Optimizers
 
                 for (int i = 0; i < b_cnt; i++)
                 {
-                    layers[layer].m_b[i] = new Vector(b_len, MemoryFlags.ReadWrite, true);
-                    layers[layer].v_b[i] = new Vector(b_len, MemoryFlags.ReadWrite, true);
+                    layers[layer].m_b[i] = new Matrix(b_len, 1, MemoryFlags.ReadWrite, true);
+                    layers[layer].v_b[i] = new Matrix(b_len, 1, MemoryFlags.ReadWrite, true);
                 }
             }
         }
