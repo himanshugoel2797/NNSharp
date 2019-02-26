@@ -8,6 +8,7 @@ using OpenCL.Net.Extensions;
 
 namespace NNSharp
 {
+#if GPU
     public class Kernel
     {
         public string Name { get; set; }
@@ -17,7 +18,6 @@ namespace NNSharp
         public bool Initialized { get; set; }
         internal Event pendingExecution { get; set; }
 #endif
-
         internal OpenCL.Net.Kernel kern;
         private CLExtensions.KernelArgChain chain;
         private bool reset = true;
@@ -78,4 +78,5 @@ namespace NNSharp
             return this;
         }
     }
+#endif
 }

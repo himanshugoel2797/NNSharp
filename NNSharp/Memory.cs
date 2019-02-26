@@ -3,11 +3,12 @@ using System;
 
 namespace NNSharp
 {
+#if GPU
     public class Memory : IDisposable
     {
         internal IMem buf;
 
-        #region IDisposable Support
+#region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 
         protected virtual void Dispose(bool disposing)
@@ -42,6 +43,7 @@ namespace NNSharp
             // TODO: uncomment the following line if the finalizer is overridden above.
             GC.SuppressFinalize(this);
         }
-        #endregion
+#endregion
     }
+#endif
 }

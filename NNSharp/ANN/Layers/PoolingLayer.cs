@@ -25,11 +25,13 @@ namespace NNSharp.ANN.Layers
         [NonSerialized]
         private Matrix BackwardError;
 
+#if GPU
         [NonSerialized]
         private Kernel fwd_layer;
 
         [NonSerialized]
         private Kernel error_layer;
+#endif
 
         public PoolingLayer(int stride, int filter_side)
         {
@@ -148,7 +150,7 @@ namespace NNSharp.ANN.Layers
         {
         }
 
-        #region Parameter Setup
+#region Parameter Setup
         public int GetOutputSize()
         {
             return output_sz;
@@ -169,13 +171,13 @@ namespace NNSharp.ANN.Layers
             PoolCache = new Matrix(input_sz * input_sz * input_depth, 1, MemoryFlags.ReadWrite, true);
             BackwardError = new Matrix(input_sz * input_sz * input_depth, 1, MemoryFlags.ReadWrite, true);
         }
-        #endregion
+#endregion
 
-        #region Static Factory
+#region Static Factory
         public static LayerContainer Create(int stride, int filter_side)
         {
             return new LayerContainer(new PoolingLayer(stride, filter_side));
         }
-        #endregion
+#endregion
     }
 }

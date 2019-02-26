@@ -10,7 +10,8 @@ namespace NNSharp.ANN.Layers
     [Serializable]
     public class InputLayer : ILayer
     {
-        private int inputSz, inputDpth;
+        private readonly int inputSz;
+        private readonly int inputDpth;
 
         [NonSerialized]
         private Matrix[] prevDelta;

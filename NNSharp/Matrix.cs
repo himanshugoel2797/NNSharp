@@ -232,6 +232,37 @@ namespace NNSharp
             });
 #endif
         }
+
+        /// <summary>
+        /// Extract blocks of filter_sz from the input and convert them into columns
+        /// </summary>
+        /// <param name="input_sz"></param>
+        /// <param name="input_cnt"></param>
+        /// <param name="stride_len"></param>
+        /// <param name="padding"></param>
+        /// <param name="filter_sz"></param>
+        /// <param name="output_sz"></param>
+        /// <param name="input"></param>
+        /// <param name="output"></param>
+        public static void Image2Column(int input_sz, int input_cnt, int stride_len, int padding, int filter_sz, int output_sz, Matrix input, Matrix output)
+        {
+            int block_sz = filter_sz * filter_sz * input_cnt;
+            int len = output_sz * output_sz;
+
+            for (int idx0 = 0; idx0 < len; idx0++)
+                for (int ix = 0; ix < input_cnt; ix++)
+                    for (int fx0 = 0; fx0 < filter_sz; fx0++)
+                        for (int fy0 = 0; fy0 < filter_sz; fy0++)
+                        {
+                            int fx = (idx0 / output_sz) * stride_len + fx0 - padding;
+                            int fy = (idx0 % output_sz) * stride_len + fy0 - padding;
+
+                            output.memory[idx0 * block_sz + ix * filter_sz * filter_sz + fx0 * filter_sz + fy0] = 0;
+
+                            if (fx >= 0 && fy >= 0 && fx < input_sz && fy < input_sz)
+                                output.memory[idx0 * block_sz + ix * filter_sz * filter_sz + fx0 * filter_sz + fy0] = input.memory[ix * input_sz * input_sz + fx * input_sz + fy];
+                        }
+        }
         #endregion
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)

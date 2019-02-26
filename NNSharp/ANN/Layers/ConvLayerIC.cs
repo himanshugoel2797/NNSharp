@@ -58,26 +58,6 @@ namespace NNSharp.ANN.Layers
             WeightErrorsReset = true;
         }
 
-        private static void im2col(int filter_sz, int input_sz, int input_cnt, int output_sz, int stride_len, int padding, Matrix Input, Matrix pInput)
-        {
-            int block_sz = filter_sz * filter_sz * input_cnt;
-            int len = output_sz * output_sz;
-
-            for (int idx0 = 0; idx0 < len; idx0++)
-                for (int ix = 0; ix < input_cnt; ix++)
-                    for (int fx0 = 0; fx0 < filter_sz; fx0++)
-                        for (int fy0 = 0; fy0 < filter_sz; fy0++)
-                        {
-                            int fx = (idx0 / output_sz) * stride_len + fx0 - padding;
-                            int fy = (idx0 % output_sz) * stride_len + fy0 - padding;
-
-                            pInput.memory[idx0 * block_sz + ix * filter_sz * filter_sz + fx0 * filter_sz + fy0] = 0;
-
-                            if (fx >= 0 && fy >= 0 && fx < input_sz && fy < input_sz)
-                                pInput.memory[idx0 * block_sz + ix * filter_sz * filter_sz + fx0 * filter_sz + fy0] = Input.memory[ix * input_sz * input_sz + fx * input_sz + fy];
-                        }
-        }
-
         private static void Convolve(float[] input, bool rotInput, int inputOff, int inputSz, int paddingSz, int strideLen, float[] filter, bool rotFilter, int filterOff, int filterSz, float[] output, bool rotOutput, int outputOff, int outputSz, bool zero)
         {
             Parallel.For(0, outputSz, (y) =>
@@ -241,7 +221,7 @@ namespace NNSharp.ANN.Layers
                 }
                 Matrix.Add(Output, Bias, i);
             }*/
-            im2col(filterSz, inputSz, inputDepth, outputSz, strideLen, paddingSz, input[0], PrevInputIC);
+            Matrix.Image2Column(inputSz, inputDepth, strideLen, paddingSz, filterSz, outputSz, input[0], PrevInputIC);
             Matrix.Mad(PrevInputIC, Weights, null, Output.Reshape(PrevInputIC.Rows, Weights.Columns), true);
 
             return new Matrix[] { Output };
