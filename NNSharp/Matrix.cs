@@ -263,6 +263,11 @@ namespace NNSharp
                                 output.memory[idx0 * block_sz + ix * filter_sz * filter_sz + fx0 * filter_sz + fy0] = input.memory[ix * input_sz * input_sz + fx * input_sz + fy];
                         }
         }
+
+        public void Clear()
+        {
+            Fmop(null, 0, null, 0, this);
+        }
         #endregion
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)

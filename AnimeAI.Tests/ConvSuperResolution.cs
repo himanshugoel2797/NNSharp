@@ -109,27 +109,27 @@ namespace AnimeAI.Tests
             NRandom r = new NRandom(0);
             NRandom r2 = new NRandom(0);
 
-            Vector loss_deriv = new Vector(OutputSize, MemoryFlags.ReadWrite, true);
+            Matrix loss_deriv = new Matrix(OutputSize, 1, MemoryFlags.ReadWrite, true);
 
 
             #region Setup Database
-            Vector data_vec = new Vector(LatentSize, MemoryFlags.ReadOnly, false);
+            Matrix data_vec = new Matrix(LatentSize, 1, MemoryFlags.ReadOnly, false);
 
-            Vector[] a_dataset_vec = new Vector[a_dataset.TrainingFiles.Count];
+            Matrix[] a_dataset_vec = new Matrix[a_dataset.TrainingFiles.Count];
             float[][] a_dataset_f = new float[a_dataset.TrainingFiles.Count][];
 
-            Vector[] b_dataset_vec = new Vector[a_dataset.TrainingFiles.Count];
+            Matrix[] b_dataset_vec = new Matrix[a_dataset.TrainingFiles.Count];
             float[][] b_dataset_f = new float[a_dataset.TrainingFiles.Count][];
 
             for (int i = 0; i < a_dataset.TrainingFiles.Count; i++)
             {
                 a_dataset_f[i] = new float[InputSize];
-                a_dataset_vec[i] = new Vector(InputSize, MemoryFlags.ReadOnly, false);
+                a_dataset_vec[i] = new Matrix(InputSize, 1, MemoryFlags.ReadOnly, false);
                 a_dataset.LoadImage(a_dataset.TrainingFiles[i], a_dataset_f[i]);
                 a_dataset_vec[i].Write(a_dataset_f[i]);
 
                 b_dataset_f[i] = new float[OutputSize];
-                b_dataset_vec[i] = new Vector(OutputSize, MemoryFlags.ReadOnly, false);
+                b_dataset_vec[i] = new Matrix(OutputSize, 1, MemoryFlags.ReadOnly, false);
                 b_dataset.LoadImage(b_dataset.TrainingFiles[i], b_dataset_f[i]);
                 b_dataset_vec[i].Write(b_dataset_f[i]);
             }
@@ -147,7 +147,7 @@ namespace AnimeAI.Tests
                 superres_dec_back.ComputeLayerErrors(loss_deriv);
                 superres_dec_back.UpdateLayers(sgd);
 
-                Vector.Mult(loss_deriv, 0);
+                loss_deriv.Clear();
 
                 if (i0 % BatchSize == 0)
                 {

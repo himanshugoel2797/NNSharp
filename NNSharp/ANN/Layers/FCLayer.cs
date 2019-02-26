@@ -53,7 +53,7 @@ namespace NNSharp.ANN.Layers
         {
             //Clear the biases and deltas
             layerReset = true;
-            Matrix.Fmop(null, 0, null, 0, BiasDelta);
+            BiasDelta.Clear();
         }
 
         public Matrix[] Forward(Matrix[] input)

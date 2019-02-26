@@ -41,7 +41,7 @@ namespace NNSharp.ANN.Layers
 
         public Matrix[] Propagate(Matrix[] prev_delta)
         {
-            Matrix.Fmop(null, 0, null, 0, BackwardError);
+            BackwardError.Clear();
 #if GPU
             var dev = Device.GetDevice();
 
