@@ -155,7 +155,7 @@ namespace NNSharp
 
             if (d != null && d.Rows != a.Rows)
                 throw new ArgumentException();
-            
+
 #if GPU
 #error TODO
             //KernelManager.SGemv(a, b, false, c, KernelManager.SGemvOperation.Add, d);
@@ -323,6 +323,88 @@ namespace NNSharp
             {
                 input.memory[i] /= inc_cnt.memory[i];
             });*/
+        }
+
+        public static void Convolve(Matrix input, bool rotInput, int inputOff, int inputSz, int paddingSz, int strideLen, Matrix filter, bool rotFilter, int filterOff, int filterSz, Matrix output, bool rotOutput, int outputOff, int outputSz, bool zero, Matrix bias = null, int bias_off = 0)
+        {
+            if (zero)
+                output.Clear();
+
+            if (filterSz < outputSz)
+            {
+                int f_sz = filterSz * filterSz - 1;
+                for (int c = 0; c < filterSz * filterSz; ++c)
+                {
+                    int x0 = c % filterSz;
+                    int y0 = c / filterSz;
+                    float filter_val = filter.memory[filterOff + (rotFilter ? c : f_sz - c)];
+
+                    for (int y = 0; y < outputSz; y++)
+                    {
+                        int i_y = y * strideLen + y0 - paddingSz;
+
+                        if (bias != null)
+                            for (int x = 0; x < outputSz; x++)
+                            {
+                                if (rotOutput) output.memory[outputOff + (outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] += bias.memory[bias_off];
+                                else output.memory[outputOff + y * outputSz + x] += bias.memory[bias_off];
+                            }
+
+                        if (i_y >= 0 && i_y < inputSz)
+                            for (int x = 0; x < outputSz; x++)
+                            {
+                                int i_x = x * strideLen + x0 - paddingSz;
+
+                                if (i_x >= 0 && i_x < inputSz)
+                                {
+                                    float input_val = input.memory[inputOff + i_y * inputSz + i_x];
+                                    if (rotInput) input_val = input.memory[inputOff + (inputSz - 1 - i_y) * inputSz + (inputSz - 1 - i_x)];
+
+                                    float output_val = filter_val * input_val;
+
+                                    if (rotOutput) output.memory[outputOff + (outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] += output_val;
+                                    else output.memory[outputOff + y * outputSz + x] += output_val;
+                                }
+                            }
+                    }
+                }
+            }
+            else
+            {
+                int o_sz = outputSz * outputSz - 1;
+                for (int c = 0; c < outputSz * outputSz; ++c)
+                {
+                    int x = c % outputSz;
+                    int y = c / outputSz;
+                    float output_val = 0;
+
+                    if (bias != null)
+                        output_val += bias.memory[bias_off];
+
+                    for (int y0 = 0; y0 < filterSz; y0++)
+                    {
+                        int i_y = y * strideLen + y0 - paddingSz;
+
+                        if (i_y >= 0 && i_y < inputSz)
+                            for (int x0 = 0; x0 < filterSz; x0++)
+                            {
+                                int i_x = x * strideLen + x0 - paddingSz;
+                                float filter_val = filter.memory[filterOff + (filterSz - 1 - y0) * filterSz + (filterSz - 1 - x0)];
+                                if (rotFilter) filter_val = filter.memory[filterOff + y0 * filterSz + x0];
+
+                                if (i_x >= 0 && i_x < inputSz)
+                                {
+                                    float input_val = input.memory[inputOff + i_y * inputSz + i_x];
+                                    if (rotInput) input_val = input.memory[inputOff + (inputSz - 1 - i_y) * inputSz + (inputSz - 1 - i_x)];
+
+                                    output_val += filter_val * input_val;
+                                }
+                            }
+                    }
+
+                    output.memory[outputOff + (rotOutput ? o_sz - c : c)] += output_val;
+                }
+            }
         }
 
         /// <summary>

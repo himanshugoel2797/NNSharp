@@ -91,22 +91,6 @@ namespace AnimeAI.Tests
 
         public void Train()
         {
-            {
-                var m = new Matrix(1, 9, MemoryFlags.ReadWrite, true);
-                var m2 = new Matrix(1, 9, MemoryFlags.ReadWrite, true);
-                var m_r = new Matrix(9, 9, MemoryFlags.ReadWrite, true);
-                var inc_cnt = new Matrix(1, 9, MemoryFlags.ReadWrite, true);
-                m.Write(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 });
-                Matrix.Image2Column(3, 1, 1, 1, 3, 3, m, m_r);
-                Matrix.Column2Image(3, 1, 1, 1, 3, 3, m2, m_r, inc_cnt);
-
-            }
-
-
-
-
-
-
             string dir = "ND_OPT_ConvAutoencoder_Data";
 
             Directory.CreateDirectory($@"{dir}");
@@ -119,7 +103,7 @@ namespace AnimeAI.Tests
             AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_small");
             b_dataset.InitializeDataset();
 
-            Adam sgd = new Adam(0.0001f);
+            Adam sgd = new Adam(0.001f);
             Quadratic quadratic = new Quadratic();
 
             NRandom r = new NRandom(0);
