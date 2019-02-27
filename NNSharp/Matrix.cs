@@ -51,6 +51,9 @@ namespace NNSharp
 
             RowStride = row_stride;
             ColumnStride = col_stride;
+
+            RowStride = cols;
+            ColumnStride = 1;
         }
 
         #region Bounds
@@ -69,6 +72,7 @@ namespace NNSharp
 
         public Matrix Reshape(int rows, int cols)
         {
+            if (rows * cols != Rows * Columns) throw new Exception();
             //TODO: maybe provide strides directly, to allow maintaining transposes
             //Dims:    (2,3).T = (3,2).Reshape(1,6) = (1,6)
             //Strides: (3,1)   = (1,3)              = (6,1)
@@ -129,13 +133,14 @@ namespace NNSharp
 
         #region Operations
         /// <summary>
-        /// O = (A dot B) + C
+        /// O = (A dot B) + C + D
         /// </summary>
         /// <param name="a">NxM dimensional input matrix</param>
         /// <param name="b">MxP dimensional input matrix</param>
         /// <param name="c">Px1 dimensional optional input matrix</param>
+        /// <param name="d">Nx1 dimensional optional input matrix</param>
         /// <param name="o">NxP dimensional output matrix</param>
-        public static void Mad(Matrix a, Matrix b, Matrix c, Matrix o, bool reset)
+        public static void Mad(Matrix a, Matrix b, Matrix c, Matrix d, Matrix o, bool reset)
         {
             if (a.Columns != b.Rows)
                 throw new ArgumentException();
@@ -148,22 +153,28 @@ namespace NNSharp
             if (c != null && c.Rows != b.Columns)
                 throw new ArgumentException();
 
+            if (d != null && d.Rows != a.Rows)
+                throw new ArgumentException();
+            
 #if GPU
 #error TODO
             //KernelManager.SGemv(a, b, false, c, KernelManager.SGemvOperation.Add, d);
 #elif CPU
             Parallel.For(0, a.Rows, (i) =>
+            //for(int i = 0; i < a.Rows; i++)
             {
                 for (int j = 0; j < b.Columns; j++)
                 {
                     float acc = 0;
                     for (int k = 0; k < a.Columns; k++)
+                    {
                         acc += a.memory[a.Index(i, k)] * b.memory[b.Index(k, j)];
+                    }
 
                     if (reset)
-                        o.memory[o.Index(i, j)] = acc + (c == null ? 0 : c.memory[c.Index(j, 0)]);
+                        o.memory[o.Index(i, j)] = acc + (c == null ? 0 : c.memory[c.Index(j, 0)]) + (d == null ? 0 : d.memory[d.Index(i, 0)]);
                     else
-                        o.memory[o.Index(i, j)] += acc + (c == null ? 0 : c.memory[c.Index(j, 0)]);
+                        o.memory[o.Index(i, j)] += acc + (c == null ? 0 : c.memory[c.Index(j, 0)]) + (d == null ? 0 : d.memory[d.Index(i, 0)]);
                 }
             });
 #endif
@@ -246,27 +257,84 @@ namespace NNSharp
         /// <param name="output"></param>
         public static void Image2Column(int input_sz, int input_cnt, int stride_len, int padding, int filter_sz, int output_sz, Matrix input, Matrix output)
         {
+            int block_sz = filter_sz * filter_sz * input_cnt;   //output rows
+            int len = output_sz * output_sz;                    //output columns
+
+            //for (int i_col = 0; i_col < len; i_col++)
+            Parallel.For(0, len, (i_col) =>
+            {
+                for (int i_d = 0; i_d < input_cnt; i_d++)
+                    for (int f_row = 0; f_row < filter_sz; f_row++)
+                        for (int f_col = 0; f_col < filter_sz; f_col++)
+                        {
+                            int f_row0 = (i_col / output_sz) * stride_len + f_row - padding;
+                            int f_col0 = (i_col % output_sz) * stride_len + f_col - padding;
+
+                            output.memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)] = 0;
+
+                            if (f_row0 >= 0 && f_col0 >= 0 && f_row0 < input_sz && f_col0 < input_sz)
+                                output.memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)] = input.memory[input.Index(i_d, f_row0 * input_sz + f_col0)];
+                        }
+            });
+        }
+
+        public static void Column2Image(int input_sz, int input_cnt, int stride_len, int padding, int filter_sz, int output_sz, Matrix input, Matrix output, Matrix inc_cnt = null)
+        {
+            //Foreach column in input, rearrange it into a block, stripping padding and applying appropriate strides
             int block_sz = filter_sz * filter_sz * input_cnt;
             int len = output_sz * output_sz;
 
-            for (int idx0 = 0; idx0 < len; idx0++)
-                for (int ix = 0; ix < input_cnt; ix++)
-                    for (int fx0 = 0; fx0 < filter_sz; fx0++)
-                        for (int fy0 = 0; fy0 < filter_sz; fy0++)
+            if (inc_cnt == null) inc_cnt = new Matrix(input.Rows, input.Columns, MemoryFlags.ReadWrite, true);
+
+            input.Clear();
+            /*
+            for (int i_col = 0; i_col < len; i_col++)
+                for (int i_d = 0; i_d < input_cnt; i_d++)
+                    for (int f_row = 0; f_row < filter_sz; f_row++)
+                        for (int f_col = 0; f_col < filter_sz; f_col++)
                         {
-                            int fx = (idx0 / output_sz) * stride_len + fx0 - padding;
-                            int fy = (idx0 % output_sz) * stride_len + fy0 - padding;
+                            int f_row0 = (i_col / output_sz) * stride_len + f_row - padding;
+                            int f_col0 = (i_col % output_sz) * stride_len + f_col - padding;
 
-                            output.memory[idx0 * block_sz + ix * filter_sz * filter_sz + fx0 * filter_sz + fy0] = 0;
-
-                            if (fx >= 0 && fy >= 0 && fx < input_sz && fy < input_sz)
-                                output.memory[idx0 * block_sz + ix * filter_sz * filter_sz + fx0 * filter_sz + fy0] = input.memory[ix * input_sz * input_sz + fx * input_sz + fy];
+                            if (f_row0 >= 0 && f_col0 >= 0 && f_row0 < input_sz && f_col0 < input_sz)
+                                input.memory[input.Index(i_d, f_row0 * input_sz + f_col0)] += output.memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)];
+                        }*/
+            //for (int c = 0; c < block_sz; c++)
+            Parallel.For(0, block_sz, (c) =>
+            {
+                int col_off = (c % filter_sz);
+                int row_off = (c / filter_sz) % filter_sz;
+                int c_im = c / filter_sz / filter_sz;
+                for (int row = 0; row < output_sz; row++)
+                    for (int col = 0; col < output_sz; col++)
+                    {
+                        int row_pad = row * stride_len - padding + row_off;
+                        int col_pad = col * stride_len - padding + col_off;
+                        if (row_pad >= 0 && row_pad < input_sz && col_pad >= 0 && col_pad < input_sz)
+                        {
+                            input.memory[input.Index(c_im, row_pad * input_sz + col_pad)] += output.memory[c * output_sz * output_sz + row * output_sz + col];
+                            inc_cnt.memory[input.Index(c_im, row_pad * input_sz + col_pad)]++;
                         }
+                    }
+            });
+
+            //for (int i = 0; i < input_sz * input_sz; i++)
+            /*Parallel.For(0, input_sz * input_sz, (i) =>
+            {
+                input.memory[i] /= inc_cnt.memory[i];
+            });*/
         }
 
+        /// <summary>
+        /// Clear the matrix.
+        /// </summary>
         public void Clear()
         {
-            Fmop(null, 0, null, 0, this);
+#if GPU
+#error TODO
+#elif CPU
+            Array.Clear(memory, 0, memory.Length);
+#endif
         }
         #endregion
 

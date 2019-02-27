@@ -66,6 +66,7 @@
   <ItemGroup>
     <Compile Include="AnimeDatasets.cs" />
     <Compile Include="FCSuperResolution.cs" />
+    <Compile Include="GradientChecking.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ConvSuperResolution.cs" />

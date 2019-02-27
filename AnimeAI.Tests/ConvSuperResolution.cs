@@ -34,7 +34,7 @@ namespace AnimeAI.Tests
             superres_enc_back = ActivationLayer.Create<LeakyReLU>();
 
             superres_enc_front.Append(
-                ConvLayer.Create(3, 16, 1).Append(
+                ConvLayer.Create(3, 16).Append(
                 ActivationLayer.Create<LeakyReLU>().Append(
                 ConvLayer.Create(3, 16).Append(
                 ActivationLayer.Create<LeakyReLU>().Append(
@@ -91,19 +91,35 @@ namespace AnimeAI.Tests
 
         public void Train()
         {
-            string dir = "NDConvAutoencoder_Data";
+            {
+                var m = new Matrix(1, 9, MemoryFlags.ReadWrite, true);
+                var m2 = new Matrix(1, 9, MemoryFlags.ReadWrite, true);
+                var m_r = new Matrix(9, 9, MemoryFlags.ReadWrite, true);
+                var inc_cnt = new Matrix(1, 9, MemoryFlags.ReadWrite, true);
+                m.Write(new float[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+                Matrix.Image2Column(3, 1, 1, 1, 3, 3, m, m_r);
+                Matrix.Column2Image(3, 1, 1, 1, 3, 3, m2, m_r, inc_cnt);
+
+            }
+
+
+
+
+
+
+            string dir = "ND_OPT_ConvAutoencoder_Data";
 
             Directory.CreateDirectory($@"{dir}");
             Directory.CreateDirectory($@"{dir}\Results");
             Directory.CreateDirectory($@"{dir}\Sources");
 
-            AnimeDatasets a_dataset = new AnimeDatasets(StartSide, @"I:\Datasets\anime-faces\emilia_(re_zero)", @"I:\Datasets\anime-faces\emilia_small");
+            AnimeDatasets a_dataset = new AnimeDatasets(StartSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_small");
             a_dataset.InitializeDataset();
 
-            AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\emilia_(re_zero)", @"I:\Datasets\anime-faces\emilia_small");
+            AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_small");
             b_dataset.InitializeDataset();
 
-            Adam sgd = new Adam(0.001f);
+            Adam sgd = new Adam(0.0001f);
             Quadratic quadratic = new Quadratic();
 
             NRandom r = new NRandom(0);

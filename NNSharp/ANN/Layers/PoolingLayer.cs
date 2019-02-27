@@ -49,6 +49,7 @@ namespace NNSharp.ANN.Layers
                 error_layer = dev.LoadKernel("error_maxpool", "", $"#define IN_D ({input_sz})", $"#define KERN_D ({filter_side})", $"#define OUT_D ({output_sz})", $"#define STRIDE ({stride})");
 #endif
 
+            var prev_d = prev_delta[0].Reshape(input_depth, output_sz * output_sz);
             for (int i = 0; i < input_depth; i++)
             {
 #if GPU
@@ -61,30 +62,29 @@ namespace NNSharp.ANN.Layers
 
                 dev.Dispatch(error_layer, new uint[] { (uint)output_sz, (uint)output_sz }, null);
 #elif CPU
-                for(int col = 0; col < output_sz; col++)
+                for(int row_o = 0; row_o < output_sz; row_o++)
                 {
-                    for (int row = 0; row < output_sz; row++)
+                    for (int col_o = 0; col_o < output_sz; col_o++)
                     {
-                        for (int n_col = 0; n_col < filter_side; n_col++)
-                            for (int n_row = 0; n_row < filter_side; n_row++)
+                        for (int row_f = 0; row_f < filter_side; row_f++)
+                            for (int col_f = 0; col_f < filter_side; col_f++)
                             {
-                                int i_col = col * stride + (n_col - filter_side / 2) + filter_side / 2;
-                                int i_row = row * stride + (n_row - filter_side / 2) + filter_side / 2;
-
-                                //TODO: Make this use the appropriate Index calls
-                                BackwardError.memory[i * input_sz * input_sz + i_col * input_sz + i_row] += PoolCache.memory[i * input_sz * input_sz + i_col * input_sz + i_row] * prev_delta[0].memory[i * output_sz * output_sz + col * output_sz + row];
+                                int i_row = row_o * stride + (row_f - filter_side / 2) + filter_side / 2;
+                                int i_col = col_o * stride + (col_f - filter_side / 2) + filter_side / 2;
+                                
+                                BackwardError.memory[BackwardError.Index(i, i_row * input_sz + i_col)] += PoolCache.memory[PoolCache.Index(i, i_row * input_sz + i_col)] * prev_d.memory[prev_d.Index(i, row_o * output_sz + col_o)];
                             }
                     }
                 }
 #endif
             }
 
-            return new Matrix[] { BackwardError };
+            return new Matrix[] { BackwardError.Reshape(input_depth * input_sz * input_sz, 1) };
         }
 
         public Matrix[] GetLastDelta()
         {
-            return new Matrix[] { BackwardError };
+            return new Matrix[] { BackwardError.Reshape(input_depth * input_sz * input_sz, 1) };
         }
 
         public void LayerError(Matrix[] prev_delta) { }
@@ -97,7 +97,7 @@ namespace NNSharp.ANN.Layers
             if (fwd_layer == null)
                 fwd_layer = dev.LoadKernel("fwd_maxpool", "", $"#define IN_D ({input_sz})", $"#define KERN_D ({filter_side})", $"#define OUT_D ({output_sz})", $"#define STRIDE ({stride})");
 #endif
-
+            var a_input = input[0].Reshape(input_depth, input_sz * input_sz);
             for (int i = 0; i < input_depth; i++)
             {
 #if GPU
@@ -110,36 +110,36 @@ namespace NNSharp.ANN.Layers
 
                 dev.Dispatch(fwd_layer, new uint[] { (uint)output_sz, (uint)output_sz }, null);
 #elif CPU
-                for(int x = 0; x < output_sz; x++)
+                for(int row = 0; row < output_sz; row++)
                 {
-                    for (int y = 0; y < output_sz; y++)
+                    for (int col = 0; col < output_sz; col++)
                     {
                         int off = 0;
                         float acc = float.MinValue;
-                        for (int n0 = 0; n0 < filter_side; n0++)
-                            for (int n1 = 0; n1 < filter_side; n1++)
+                        for (int n_row = 0; n_row < filter_side; n_row++)
+                            for (int n_col = 0; n_col < filter_side; n_col++)
                             {
-                                int i_x = x * stride + (n0 - filter_side / 2) + filter_side / 2;
-                                int i_y = y * stride + (n1 - filter_side / 2) + filter_side / 2;
+                                int i_row = row * stride + (n_row - filter_side / 2) + filter_side / 2;
+                                int i_col = col * stride + (n_col - filter_side / 2) + filter_side / 2;
 
-                                float i_val = input[0].memory[i * input_sz * input_sz + i_x * input_sz + i_y];
+                                float i_val = a_input.memory[a_input.Index(i, i_row * input_sz + i_col)];
 
-                                PoolCache.memory[i * input_sz * input_sz + i_x * input_sz + i_y] = 0;
+                                PoolCache.memory[PoolCache.Index(i, i_row * input_sz + i_col)] = 0;
                                 if (i_val > acc)
                                 {
-                                    off = i * input_sz * input_sz + i_x * input_sz + i_y;
+                                    off = PoolCache.Index(i, i_row * input_sz + i_col);
                                     acc = i_val;
                                 }
                             }
 
                         PoolCache.memory[off] = 1;
-                        CurOutput.memory[i * output_sz * output_sz + x * output_sz + y] = acc;
+                        CurOutput.memory[CurOutput.Index(i, row * output_sz + col)] = acc;
                     }
                 }
 #endif
             }
 
-            return new Matrix[] { CurOutput };
+            return new Matrix[] { CurOutput.Reshape(input_depth * output_sz * output_sz, 1) };
         }
 
         public void Learn(IOptimizer opt)
@@ -168,9 +168,9 @@ namespace NNSharp.ANN.Layers
             input_depth = input_dpth;
             output_sz = 1 + (sz - filter_side) / stride;
 
-            CurOutput = new Matrix(output_sz * output_sz * input_depth, 1, MemoryFlags.ReadWrite, true);
-            PoolCache = new Matrix(input_sz * input_sz * input_depth, 1, MemoryFlags.ReadWrite, true);
-            BackwardError = new Matrix(input_sz * input_sz * input_depth, 1, MemoryFlags.ReadWrite, true);
+            CurOutput = new Matrix(input_depth, output_sz * output_sz, MemoryFlags.ReadWrite, true);
+            PoolCache = new Matrix(input_depth, input_sz * input_sz, MemoryFlags.ReadWrite, true);
+            BackwardError = new Matrix(input_depth, input_sz * input_sz, MemoryFlags.ReadWrite, true);
         }
 #endregion
 

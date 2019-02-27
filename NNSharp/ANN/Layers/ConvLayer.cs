@@ -40,6 +40,9 @@ namespace NNSharp.ANN.Layers
         private Matrix BackwardDelta;
 
         [NonSerialized]
+        private Matrix BackwardDeltaIC;
+
+        [NonSerialized]
         private bool WeightErrorsReset;
 
         const int SmallKernelRequirement = 400;
@@ -62,8 +65,8 @@ namespace NNSharp.ANN.Layers
         {
             //cur_delta = BackwardDelta = Full convolution of prev_delta with 180 rotated filter <- sum from all filters in terms of filterCnt, but spread across inputDepth? 
             //Flatten and transpose the Weights as is, dot the flattened prev_delta
-            //TODO: adjust matrix library such that transposing is a property of the matrix that affects indexing
-            //TODO: Make matrix indexing use a function and aggresively inline said function
+            Matrix.Mad(Weights.Transpose(), prev_delta[0].Reshape(filterCnt, outputSz * outputSz), null, null, BackwardDeltaIC, true);
+            Matrix.Column2Image(inputSz, inputDepth, strideLen, paddingSz, filterSz, outputSz, BackwardDelta.Reshape(inputDepth, inputSz * inputSz), BackwardDeltaIC);
             //col2im the result
             return new Matrix[] { BackwardDelta };
         }
@@ -76,7 +79,23 @@ namespace NNSharp.ANN.Layers
         public void LayerError(Matrix[] prev_delta)
         {
             //Filter weight errors = covolution of Input with prev_delta <- doesn't tell us about individual filters per input dimension -> For now, treat the error as the same for each filter per input dimension
-            //Flatten prev_delta into a Matrix, dot the transpose of the PrevInput
+            //Flatten prev_delta into a Vector, dot the transpose of the PrevInput
+            var prev_delta_r = prev_delta[0].Reshape(filterCnt, outputSz * outputSz);
+            Matrix.Mad(prev_delta_r, PrevInputIC.Transpose(), null, null, WeightErrors, WeightErrorsReset);
+            //(filterCnt, outputSz * outputSz) . (outputSz * outputSz, filterSz * filterSz * inputDepth)
+
+            for(int i = 0; i < filterCnt; i++)
+            {
+                float acc = 0;
+                for (int x = 0; x < outputSz * outputSz; x++)
+                    acc += prev_delta_r.memory[prev_delta_r.Index(i, x)];
+
+                if (WeightErrorsReset)
+                    BiasError.memory[BiasError.Index(i, 0)] = 0;
+
+                BiasError.memory[BiasError.Index(i, 0)] += acc;
+            }
+
             WeightErrorsReset = false;
         }
 
@@ -84,8 +103,8 @@ namespace NNSharp.ANN.Layers
         {
             PrevInput = input[0];
 
-            Matrix.Image2Column(inputSz, inputDepth, strideLen, paddingSz, filterSz, outputSz, input[0], PrevInputIC);
-            Matrix.Mad(PrevInputIC, Weights, null, Output.Reshape(PrevInputIC.Rows, Weights.Columns), true);
+            Matrix.Image2Column(inputSz, inputDepth, strideLen, paddingSz, filterSz, outputSz, input[0].Reshape(inputDepth, inputSz * inputSz), PrevInputIC);
+            Matrix.Mad(Weights, PrevInputIC, null, Bias, Output.Reshape(Weights.Rows, PrevInputIC.Columns), true);
 
             return new Matrix[] { Output };
         }
@@ -128,6 +147,7 @@ namespace NNSharp.ANN.Layers
             BiasError = new Matrix(filterCnt, 1, MemoryFlags.ReadWrite, false);
 
             PrevInputIC = new Matrix(filterSz * filterSz * input_depth, outputSz * outputSz, MemoryFlags.ReadWrite, false);
+            BackwardDeltaIC = new Matrix(filterSz * filterSz * input_depth, outputSz * outputSz, MemoryFlags.ReadWrite, false);
             BackwardDelta = new Matrix(inputSz * inputSz * inputDepth, 1, MemoryFlags.ReadWrite, false);
         }
         #endregion
@@ -143,7 +163,7 @@ namespace NNSharp.ANN.Layers
                 int idx = 0;
                 for (int j = 0; j < inputDepth; j++)
                     for (int x = 0; x < filterSz * filterSz; x++)
-                        rng[idx++] = weightInitializer.GetWeight(Weights.Columns, Weights.Rows);
+                        rng[idx++] = weightInitializer.GetWeight(inputSz * inputSz, outputSz * outputSz);
                 rng_b[i] = weightInitializer.GetBias();
 
                 Weights.Write(rng, i * inputDepth * filterSz * filterSz);

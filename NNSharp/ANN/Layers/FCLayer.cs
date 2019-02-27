@@ -59,14 +59,14 @@ namespace NNSharp.ANN.Layers
         public Matrix[] Forward(Matrix[] input)
         {
             PrevInput = input[0];
-            Matrix.Mad(Weights.Transpose(), input[0], Biases.Transpose(), ResultMemory, true);
+            Matrix.Mad(input[0].Transpose(), Weights, Biases, null, ResultMemory.Transpose(), true);
             return new Matrix[] { ResultMemory };
         }
 
         public Matrix[] Propagate(Matrix[] prev_delta)
         {
             //Compute the error to propagate to the following layer
-            Matrix.Mad(Weights, prev_delta[0], null, CurDeltaMemory, true);
+            Matrix.Mad(Weights, prev_delta[0], null, null, CurDeltaMemory, true);
             return new Matrix[] { CurDeltaMemory };
         }
 
@@ -78,7 +78,7 @@ namespace NNSharp.ANN.Layers
         public void LayerError(Matrix[] prev_delta)
         {
             //Compute the current weights using prev_delta as the error
-            Matrix.Mad(PrevInput, prev_delta[0].Transpose(), null, WeightDelta, layerReset);
+            Matrix.Mad(PrevInput, prev_delta[0].Transpose(), null, null, WeightDelta, layerReset);
             Matrix.Fmop(prev_delta[0], 1, BiasDelta, 1, BiasDelta);
 
             layerReset = false;
@@ -116,20 +116,16 @@ namespace NNSharp.ANN.Layers
             float[] m_ws = new float[Weights.Rows];
             float[] b_ws = new float[Biases.Rows];
 
-            //for (int j = 0; j < Weights.Width; j++)
-            Parallel.For(0, Weights.Columns, (j) =>
-            {
-                for (int i = 0; i < Weights.Rows; i++)
-                    m_ws[i] = (float)weightInitializer.GetWeight(Weights.Columns, Weights.Rows); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
-
-                Weights.Write(m_ws, j * Weights.Rows);
+            for (int j = 0; j < Weights.Columns * Weights.Rows; j++){
+                    Weights.memory[j] = (float)weightInitializer.GetWeight(Weights.Columns, Weights.Rows); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
             }
-            );
+            //);
 
-            Parallel.For(0, b_ws.Length, (i) =>
-           {
+            for (int i = 0; i < b_ws.Length; i++)
+            //Parallel.For(0, b_ws.Length, (i) =>
+            {
                b_ws[i] = weightInitializer.GetBias();
-           });
+           }//);
 
             Biases.Write(b_ws);
         }
