@@ -12,71 +12,106 @@ using System.Linq;
 
 namespace AnimeAI.Tests
 {
-    class ConvSuperResolution
+    class ReversibleAutoencoder
     {
         LayerContainer superres_enc_front, superres_enc_back, superres_dec_front, superres_dec_back;
 
-        const int StartSide = 32;
-        const int LatentSize = 4 * 4 * 16;
-        const int EndSide = 32;
+        const int StartSide = 96;
+        const int LatentSize = 4 * 4 * 8;
+        const int EndSide = 96;
         const int InputSize = StartSide * StartSide * 3;
         const int OutputSize = EndSide * EndSide * 3;
 
         const int BatchSize = 32;
 
-        public ConvSuperResolution()
+        public ReversibleAutoencoder()
         {
             superres_enc_front = InputLayer.Create(StartSide, 3);
             superres_enc_back = ActivationLayer.Create<LeakyReLU>();
 
-            superres_enc_front.Append(
-                ConvLayer.Create(3, 16).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                PoolingLayer.Create(2, 2).Append(
-                ConvLayer.Create(3, 16).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16).Append(
-                ActivationLayer.Create<LeakyReLU>().Append(
-                PoolingLayer.Create(2, 2).Append(
-                ConvLayer.Create(3, 16, 1).Append(
-                    superres_enc_back
-            ))))))))))))));
+            var pooling_0 = PoolingLayer.Create(2, 2);
+            var pooling_1 = PoolingLayer.Create(2, 2);
+            var pooling_2 = PoolingLayer.Create(2, 2);
+            var pooling_3 = PoolingLayer.Create(2, 2);
 
-            superres_dec_front = InputLayer.Create(4, 16);
+            superres_enc_front.Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 94, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 92, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 90, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 88, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                pooling_0.Append(                               //o = 44, 16
+                ConvLayer.Create(3, 12).Append(                 //o = 42, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 40, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 38, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 36, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 34, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 32, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 30, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                 //o = 28, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                pooling_2.Append(                               //o = 14, 16
+                ConvLayer.Create(3, 12).Append(                 //o = 12, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                  //o = 10, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12).Append(                  //o = 8, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                pooling_3.Append(                               //o = 4, 16
+                ConvLayer.Create(3, 8, 1).Append(               //o = 4, 8
+                    superres_enc_back
+            )))))))))))))))))))))))))))))))))));
+
+            superres_dec_front = InputLayer.Create(4, 8);
             superres_dec_back = ActivationLayer.Create<Tanh>();
 
-            superres_dec_front.Append(
-                FCLayer.Create(8, 16).Append(
+            superres_dec_front.Append(                          //o = 4, 8
+                ConvLayer.Create(3, 8, 1).Append(               //o = 4, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                UnpoolingLayer.Create(pooling_3).Append(        //o = 8, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(               //o = 10, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 12, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 14, 16
+                UnpoolingLayer.Create(pooling_2).Append(        //o = 28, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 30, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(               //o = 32, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 34, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 36, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 38, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 40, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 16, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 42, 16
                 ActivationLayer.Create<LeakyReLU>().Append(
-                ConvLayer.Create(3, 3, 2).Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 44, 16
+                UnpoolingLayer.Create(pooling_0).Append(        //o = 88, 16
+                ConvLayer.Create(3, 12, 2).Append(              //o = 120, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 122, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 12, 2).Append(              //o = 124, 16
+                ActivationLayer.Create<LeakyReLU>().Append(
+                ConvLayer.Create(3, 3, 2).Append(              //o = 126, 3
                     superres_dec_back
-            ))))))))))))))))))))))))));
+            )))))))))))))))))))))))))))))))))));
 
             superres_enc_back.Append(superres_dec_front);
 
@@ -90,19 +125,19 @@ namespace AnimeAI.Tests
 
         public void Train()
         {
-            string dir = "ND_OPT_ConvAutoencoder_Data";
+            string dir = "RevAutoencoder_Data";
 
             Directory.CreateDirectory($@"{dir}");
             Directory.CreateDirectory($@"{dir}\Results");
             Directory.CreateDirectory($@"{dir}\Sources");
 
-            AnimeDatasets a_dataset = new AnimeDatasets(StartSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_small");
+            AnimeDatasets a_dataset = new AnimeDatasets(StartSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_96");
             a_dataset.InitializeDataset();
 
-            AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_small");
+            AnimeDatasets b_dataset = new AnimeDatasets(EndSide, @"I:\Datasets\anime-faces\combined", @"I:\Datasets\anime-faces\combined_96");
             b_dataset.InitializeDataset();
 
-            Adam sgd = new Adam(0.001f);
+            Adam sgd = new Adam(0.005f);
             Quadratic quadratic = new Quadratic();
 
             NRandom r = new NRandom(0);
@@ -134,7 +169,7 @@ namespace AnimeAI.Tests
             }
             #endregion
 
-            for (int i0 = 000; i0 < 20000 * BatchSize; i0++)
+            for (int i0 = 000; i0 < 5000 * BatchSize; i0++)
             {
                 int idx = (r.Next() % (a_dataset.TrainingFiles.Count / 2));
 
@@ -155,7 +190,7 @@ namespace AnimeAI.Tests
                 }
 
                 Console.Clear();
-                Console.Write($"Iteration: {i0 / BatchSize}");
+                Console.Write($"Iteration: {i0 / BatchSize} Sub-batch: {i0 % BatchSize}");
             }
 
             superres_enc_front.Save($@"{dir}\network_final.bin");

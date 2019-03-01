@@ -10,17 +10,17 @@ namespace NNSharp.ANN.Layers
     [Serializable]
     public class PoolingLayer : ILayer
     {
-        private readonly int stride;
-        private readonly int filter_side;
-        private int input_depth;
-        private int input_sz;
-        private int output_sz;
+        internal readonly int stride;
+        internal readonly int filter_side;
+        internal int input_depth;
+        internal int input_sz;
+        internal int output_sz;
 
         [NonSerialized]
         private Matrix CurOutput;
 
         [NonSerialized]
-        private Matrix PoolCache;
+        internal Matrix PoolCache;
 
         [NonSerialized]
         private Matrix BackwardError;
@@ -72,7 +72,7 @@ namespace NNSharp.ANN.Layers
                                 int i_row = row_o * stride + (row_f - filter_side / 2) + filter_side / 2;
                                 int i_col = col_o * stride + (col_f - filter_side / 2) + filter_side / 2;
                                 
-                                BackwardError.memory[BackwardError.Index(i, i_row * input_sz + i_col)] += PoolCache.memory[PoolCache.Index(i, i_row * input_sz + i_col)] * prev_d.memory[prev_d.Index(i, row_o * output_sz + col_o)];
+                                BackwardError.Memory[BackwardError.Index(i, i_row * input_sz + i_col)] += PoolCache.Memory[PoolCache.Index(i, i_row * input_sz + i_col)] * prev_d.Memory[prev_d.Index(i, row_o * output_sz + col_o)];
                             }
                     }
                 }
@@ -122,9 +122,9 @@ namespace NNSharp.ANN.Layers
                                 int i_row = row * stride + (n_row - filter_side / 2) + filter_side / 2;
                                 int i_col = col * stride + (n_col - filter_side / 2) + filter_side / 2;
 
-                                float i_val = a_input.memory[a_input.Index(i, i_row * input_sz + i_col)];
+                                float i_val = a_input.Memory[a_input.Index(i, i_row * input_sz + i_col)];
 
-                                PoolCache.memory[PoolCache.Index(i, i_row * input_sz + i_col)] = 0;
+                                PoolCache.Memory[PoolCache.Index(i, i_row * input_sz + i_col)] = 0;
                                 if (i_val > acc)
                                 {
                                     off = PoolCache.Index(i, i_row * input_sz + i_col);
@@ -132,8 +132,8 @@ namespace NNSharp.ANN.Layers
                                 }
                             }
 
-                        PoolCache.memory[off] = 1;
-                        CurOutput.memory[CurOutput.Index(i, row * output_sz + col)] = acc;
+                        PoolCache.Memory[off] = 1;
+                        CurOutput.Memory[CurOutput.Index(i, row * output_sz + col)] = acc;
                     }
                 }
 #endif

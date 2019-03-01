@@ -117,7 +117,7 @@ namespace NNSharp.ANN.Layers
             float[] b_ws = new float[Biases.Rows];
 
             for (int j = 0; j < Weights.Columns * Weights.Rows; j++){
-                    Weights.memory[j] = (float)weightInitializer.GetWeight(Weights.Columns, Weights.Rows); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
+                    Weights.Memory[j] = (float)weightInitializer.GetWeight(Weights.Columns, Weights.Rows); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
             }
             //);
 

@@ -28,7 +28,7 @@ namespace NNSharp.ANN.LossFunctions
             {
                 case "quadratic_loss":
                     {
-                        Parallel.For(0, result.Rows, (i) => result.memory[i] += (0.5f * (float)Math.Pow(output.memory[i] - expectedOutput.memory[i], 2))/result.Rows);
+                        Parallel.For(0, result.Rows, (i) => result.Memory[i] += (0.5f * (float)Math.Pow(output.Memory[i] - expectedOutput.Memory[i], 2))/result.Rows);
                     }
                     break;
                 case "binary_cross_entropy":
@@ -38,7 +38,7 @@ namespace NNSharp.ANN.LossFunctions
                         //y = actual output
                         Parallel.For(0, result.Rows, (i) =>
                         {
-                            result.memory[i] += (-(float)(expectedOutput.memory[i] * Math.Log(output.memory[i] + float.Epsilon) + (1 - expectedOutput.memory[i]) * Math.Log(1 - output.memory[i] + float.Epsilon)) / result.Rows);
+                            result.Memory[i] += (-(float)(expectedOutput.Memory[i] * Math.Log(output.Memory[i] + float.Epsilon) + (1 - expectedOutput.Memory[i]) * Math.Log(1 - output.Memory[i] + float.Epsilon)) / result.Rows);
                         });
                     }
                     break;
@@ -55,7 +55,7 @@ namespace NNSharp.ANN.LossFunctions
             {
                 case "quadratic_loss_deriv":
                     {
-                        Parallel.For(0, result.Rows, (i) => result.memory[i] += (output.memory[i] - expectedOutput.memory[i]) / result.Rows);
+                        Parallel.For(0, result.Rows, (i) => result.Memory[i] += (output.Memory[i] - expectedOutput.Memory[i]) / result.Rows);
                     }
                     break;
                 case "binary_cross_entropy_deriv":
@@ -65,9 +65,9 @@ namespace NNSharp.ANN.LossFunctions
                         //y = actual output
                         Parallel.For(0, result.Rows, (i) =>
                         {
-                            float r_0 = ((1.0f - expectedOutput.memory[i]) - output.memory[i]);
+                            float r_0 = ((1.0f - expectedOutput.Memory[i]) - output.Memory[i]);
                             float r = (r_0 == 0) ? 0 : (1.0f / r_0);
-                            result.memory[i] += r;
+                            result.Memory[i] += r;
                             //result.memory[i] += -(float)((expectedOutput.memory[i] / (output.memory[i] + float.Epsilon) - (1 - expectedOutput.memory[i]) / (1 - output.memory[i] + float.Epsilon))/result.Rows);
                         });
                     }

@@ -9,10 +9,11 @@ namespace NNSharp.ANN.Optimizers
     [Serializable]
     public class SGD : IOptimizer
     {
-        private float r;
+        private readonly float r;
 
-        public SGD()
+        public SGD(float learning_rate)
         {
+            r = learning_rate;
         }
 
         public void OptimizeWeights(ILayer layer, int idx, Matrix w, Matrix nabla_w)
@@ -28,11 +29,6 @@ namespace NNSharp.ANN.Optimizers
         public void RegisterLayer(ILayer layer, int w_cnt, int ww_len, int wh_len, int b_cnt, int b_len)
         {
 
-        }
-
-        public void SetLearningRate(float v)
-        {
-            r = v;
         }
 
         public void Update(float curError)

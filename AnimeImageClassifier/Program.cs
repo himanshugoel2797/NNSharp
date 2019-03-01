@@ -2,7 +2,6 @@
 using NNSharp.ANN.ActivationFunctions;
 using NNSharp.ANN.Kernels;
 using NNSharp.ANN.LossFunctions;
-using NNSharp.ANN.NetworkTrainer;
 using NNSharp.ANN.WeightInitializers;
 using NNSharp.Tools;
 using System;
@@ -24,25 +23,35 @@ namespace AnimeImageClassifier
 
             var tags = new string[]
             {
-                "emilia_(re:zero)",
-                "katou_megumi",
+                //"emilia_(re:zero)",
+                //"katou_megumi",
                 //"tokisaki_kurumi",
-                "sawamura_spencer_eriri",
+                //"sawamura_spencer_eriri",
                 //"kasumigaoka_utaha",
-                "zero_two_(darling_in_the_franxx)",
+                //"zero_two_(darling_in_the_franxx)",
                 //"nishikino_maki",
                 //"souryuu_asuka_langley",
                 //"shiba_miyuki",
                 //"akemi_homura",
-                //"kizuna_ai"
+                //"kizuna_ai",
+                //"euryale",
+                "osakabe-hime_(fate/grand_order)",
+                "momo_velia_deviluke",
+                "semiramis_(fate)",
+                "altera_(fate)",
+                "takao_(aoki_hagane_no_arpeggio)",
+                "medb_(fate)_(all)",
+                "meltlilith",
+                "yuzuriha_inori",
+                //"redjuice"
             };
 
             var globalTags = new string[]
             {
                 "1girl",
+                "solo",
                 "-*boy*",
                 "-large_breasts",
-                "-loli",
                 "-video",
             };
 
@@ -53,9 +62,9 @@ namespace AnimeImageClassifier
             for (int i = 0; i < tags.Length; i++)
                 datasetBuilder.AddLocalTag(tags[i]);
 
-            datasetBuilder.Download(300, @"I:\Datasets\Gelbooru");
-            var inputDataset = datasetBuilder.GetDataset(@"I:\Datasets\Gelbooru", @"I:\Datasets\Gelbooru_SMALL", Side, 250);
-
+            datasetBuilder.Download(500, @"I:\Datasets\Gelbooru");
+            //var inputDataset = datasetBuilder.GetDataset(@"I:\Datasets\Gelbooru", @"I:\Datasets\Gelbooru_SMALL", Side, 250);
+            /*
             var classifier = new NeuralNetworkBuilder(Side * Side * 3)
                                 .WeightInitializer(new UniformWeightInitializer(0, 0))
                                 .LossFunction<Quadratic>()
@@ -65,9 +74,9 @@ namespace AnimeImageClassifier
                                 .AddConv(3, 10, 1, 0, Side / 2, 3)
                                 .AddActivation<ReLU>()
                                 .AddPooling(2, 2, 10)
-                                /*.AddFC(4096)
+                                .AddFC(4096)
                                 .AddActivation<LeakyReLU>()
-                                .AddFC(1024)*/
+                                .AddFC(1024)
                                 .AddActivation<ReLU>()
                                 .AddFC(512)
                                 .AddActivation<ReLU>()
@@ -90,7 +99,7 @@ namespace AnimeImageClassifier
             var trainer = new ClassifierTrainer("Anime Classifier", tags, classifier);
             trainer.SetDataset(inputDataset);
 
-            LearningManager.Show(trainer);
+            LearningManager.Show(trainer);*/
         }
     }
 }

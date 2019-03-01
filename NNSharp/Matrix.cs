@@ -23,7 +23,7 @@ namespace NNSharp
 #if GPU
         internal Memory memory;
 #elif CPU
-        internal float[] memory;
+        public float[] Memory;
 #endif
 
         public Matrix(int rows, int cols, MemoryFlags flags, bool zero)
@@ -36,7 +36,7 @@ namespace NNSharp
 #if GPU
             memory = Device.GetDevice().AllocateMemory(cols * rows, flags, zero);
 #elif CPU
-            memory = new float[cols * rows];
+            Memory = new float[cols * rows];
 #endif
         }
 #if GPU
@@ -45,7 +45,7 @@ namespace NNSharp
         private Matrix(float[] memory, int rows, int cols, int row_stride, int col_stride)
 #endif
         {
-            this.memory = memory;
+            this.Memory = memory;
             Columns = cols;
             Rows = rows;
 
@@ -78,12 +78,12 @@ namespace NNSharp
             //Strides: (3,1)   = (1,3)              = (6,1)
             //[[1, 2, 3],[4, 5, 6]].T = [[1, 4],[2, 5],[3, 6]].R = [[1, 4, 2, 5, 3, 6]]
             //[[1, 2, 3],[4, 5, 6]].R = [[1, 2, 3, 4, 5, 6]].T = [[1],[2],[3],[4],[5],[6]]
-            return new Matrix(memory, rows, cols, cols, rows);
+            return new Matrix(Memory, rows, cols, cols, rows);
         }
 
         public Matrix Transpose()
         {
-            return new Matrix(memory, Columns, Rows, ColumnStride, RowStride);
+            return new Matrix(Memory, Columns, Rows, ColumnStride, RowStride);
         }
         #endregion
 
@@ -94,7 +94,7 @@ namespace NNSharp
             var dev = Device.GetDevice();
             dev.Write(memory, data);
 #elif CPU
-            Array.Copy(data, memory, memory.Length);
+            Array.Copy(data, Memory, Memory.Length);
 #endif
         }
 
@@ -104,7 +104,7 @@ namespace NNSharp
             var dev = Device.GetDevice();
             dev.Write(memory, data, offset);
 #elif CPU
-            Array.Copy(data, 0, memory, offset, data.Length);
+            Array.Copy(data, 0, Memory, offset, data.Length);
 #endif
         }
 
@@ -114,7 +114,7 @@ namespace NNSharp
             var dev = Device.GetDevice();
             dev.Read(memory, data);
 #elif CPU
-            Array.Copy(memory, data, data.Length);
+            Array.Copy(Memory, data, data.Length);
 #endif
         }
 
@@ -126,7 +126,7 @@ namespace NNSharp
             dev.Read(memory, data);
             return data;
 #elif CPU
-            return memory;
+            return Memory;
 #endif
         }
         #endregion
@@ -168,13 +168,14 @@ namespace NNSharp
                     float acc = 0;
                     for (int k = 0; k < a.Columns; k++)
                     {
-                        acc += a.memory[a.Index(i, k)] * b.memory[b.Index(k, j)];
+                        //TODO: Check if either one is continuously indexed, if so, use a version that uses and increments pointers directly
+                        acc += a.Memory[a.Index(i, k)] * b.Memory[b.Index(k, j)];
                     }
 
                     if (reset)
-                        o.memory[o.Index(i, j)] = acc + (c == null ? 0 : c.memory[c.Index(j, 0)]) + (d == null ? 0 : d.memory[d.Index(i, 0)]);
+                        o.Memory[o.Index(i, j)] = acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[d.Index(i, 0)]);
                     else
-                        o.memory[o.Index(i, j)] += acc + (c == null ? 0 : c.memory[c.Index(j, 0)]) + (d == null ? 0 : d.memory[d.Index(i, 0)]);
+                        o.Memory[o.Index(i, j)] += acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[d.Index(i, 0)]);
                 }
             });
 #endif
@@ -207,15 +208,15 @@ namespace NNSharp
             {
                 unsafe
                 {
-                    fixed (float* a_p_b = a?.memory)
-                    fixed (float* b_p_b = b?.memory)
-                    fixed (float* c_p_b = c.memory)
+                    fixed (float* a_p_b = a?.Memory)
+                    fixed (float* b_p_b = b?.Memory)
+                    fixed (float* c_p_b = c.Memory)
                     {
                         float* a_p = a_p_b;
                         float* b_p = b_p_b;
                         float* c_p = c_p_b;
 
-                        for (int i = 0; i < c.memory.Length; i++, a_p++, b_p++, c_p++)
+                        for (int i = 0; i < c.Memory.Length; i++, a_p++, b_p++, c_p++)
                             *c_p = (a == null ? 0 : *a_p) * rate_a + (b == null ? 0 : *b_p) * rate_b;
                     }
                 }
@@ -225,7 +226,7 @@ namespace NNSharp
                 {
                     for (int j = 0; j < c.Columns; j++)
                     {
-                        c.memory[c.Index(i, j)] = (a == null ? 0 : a.memory[a.Index(i, j)]) * rate_a + (b == null ? 0 : b.memory[b.Index(i, j)]) * rate_b;
+                        c.Memory[c.Index(i, j)] = (a == null ? 0 : a.Memory[a.Index(i, j)]) * rate_a + (b == null ? 0 : b.Memory[b.Index(i, j)]) * rate_b;
                     }
                 });
 #endif
@@ -255,9 +256,9 @@ namespace NNSharp
 #if GPU
             KernelManager.HadamardActiv(a, b, c, activ);
 #elif CPU
-            Parallel.For(0, c.memory.Length, (i) =>
+            Parallel.For(0, c.Memory.Length, (i) =>
             {
-                c.memory[i] = (b == null ? 1 : b.memory[i]) * activ.CPUFunction(a.memory[i]);
+                c.Memory[i] = (b == null ? 1 : b.Memory[i]) * activ.CPUFunction(a.Memory[i]);
             });
 #endif
         }
@@ -288,10 +289,10 @@ namespace NNSharp
                             int f_row0 = (i_col / output_sz) * stride_len + f_row - padding;
                             int f_col0 = (i_col % output_sz) * stride_len + f_col - padding;
 
-                            output.memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)] = 0;
+                            output.Memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)] = 0;
 
                             if (f_row0 >= 0 && f_col0 >= 0 && f_row0 < input_sz && f_col0 < input_sz)
-                                output.memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)] = input.memory[input.Index(i_d, f_row0 * input_sz + f_col0)];
+                                output.Memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)] = input.Memory[input.Index(i_d, f_row0 * input_sz + f_col0)];
                         }
             });
         }
@@ -330,8 +331,8 @@ namespace NNSharp
                         int col_pad = col * stride_len - padding + col_off;
                         if (row_pad >= 0 && row_pad < input_sz && col_pad >= 0 && col_pad < input_sz)
                         {
-                            input.memory[input.Index(c_im, row_pad * input_sz + col_pad)] += output.memory[c * output_sz * output_sz + row * output_sz + col];
-                            inc_cnt.memory[input.Index(c_im, row_pad * input_sz + col_pad)]++;
+                            input.Memory[input.Index(c_im, row_pad * input_sz + col_pad)] += output.Memory[c * output_sz * output_sz + row * output_sz + col];
+                            inc_cnt.Memory[input.Index(c_im, row_pad * input_sz + col_pad)]++;
                         }
                     }
             });
@@ -343,16 +344,16 @@ namespace NNSharp
             });*/
         }
 
-        public static void Convolve(Matrix input, bool rotInput, int inputOff, int inputSz, int paddingSz, int strideLen, Matrix filter, bool rotFilter, int filterOff, int filterSz, Matrix output, bool rotOutput, int outputOff, int outputSz, bool zero, Matrix bias = null, int bias_off = 0)
+        public static void Convolve(Matrix input, bool rotInput, int inputOff, int inputSz, int paddingSz, int dilation, int strideLen, Matrix filter, bool rotFilter, int filterOff, int filterSz, Matrix output, bool rotOutput, int outputOff, int outputSz, bool zero, Matrix bias = null, int bias_off = 0)
         {
             if (zero)
                 output.Clear();
 
             unsafe
             {
-                fixed (float* filter_m = &filter.memory[filterOff])
-                fixed (float* input_m = &input.memory[inputOff])
-                fixed (float* output_m = &output.memory[outputOff])
+                fixed (float* filter_m = &filter.Memory[filterOff])
+                fixed (float* input_m = &input.Memory[inputOff])
+                fixed (float* output_m = &output.Memory[outputOff])
                 {
 
                     if (filterSz < outputSz)
@@ -366,12 +367,12 @@ namespace NNSharp
 
                             for (int y = 0; y < outputSz; y++)
                             {
-                                int i_y = y * strideLen + y0 - paddingSz;
+                                int i_y = y * strideLen + y0 * dilation - paddingSz;
                                 if (rotInput) i_y = inputSz - 1 - i_y;
 
                                 if (bias != null)
                                 {
-                                    float b_val = bias.memory[bias_off];
+                                    float b_val = bias.Memory[bias_off];
                                     for (int x = 0; x < outputSz; x++)
                                     {
                                         if (rotOutput) output_m[(outputSz - 1 - y) * outputSz + (outputSz - 1 - x)] += b_val;
@@ -382,7 +383,7 @@ namespace NNSharp
                                 if (i_y >= 0 && i_y < inputSz)
                                     for (int x = 0; x < outputSz; x++)
                                     {
-                                        int i_x = x * strideLen + x0 - paddingSz;
+                                        int i_x = x * strideLen + x0 * dilation - paddingSz;
                                         if (rotInput) i_x = inputSz - 1 - i_x;
 
                                         if (i_x >= 0 && i_x < inputSz)
@@ -406,17 +407,17 @@ namespace NNSharp
                             float output_val = 0;
 
                             if (bias != null)
-                                output_val += bias.memory[bias_off];
+                                output_val += bias.Memory[bias_off];
 
                             for (int y0 = 0; y0 < filterSz; y0++)
                             {
-                                int i_y = y * strideLen + y0 - paddingSz;
+                                int i_y = y * strideLen + y0 * dilation - paddingSz;
                                 if (rotInput) i_y = inputSz - 1 - i_y;
 
                                 if (i_y >= 0 && i_y < inputSz)
                                     for (int x0 = 0; x0 < filterSz; x0++)
                                     {
-                                        int i_x = x * strideLen + x0 - paddingSz;
+                                        int i_x = x * strideLen + x0 * dilation - paddingSz;
                                         if (rotInput) i_x = inputSz - 1 - i_x;
 
                                         float filter_val = filter_m[(filterSz - 1 - y0) * filterSz + (filterSz - 1 - x0)];
@@ -442,7 +443,7 @@ namespace NNSharp
 #if GPU
 #error TODO
 #elif CPU
-            Array.Clear(memory, 0, memory.Length);
+            Array.Clear(Memory, 0, Memory.Length);
 #endif
         }
         #endregion
@@ -453,17 +454,21 @@ namespace NNSharp
             var mData = new float[Width * Height];
             Read(mData);
 #elif CPU
-            var mData = memory;
+            var mData = Memory;
 #endif
             info.AddValue("data", mData, mData.GetType());
             info.AddValue("width", Columns);
             info.AddValue("height", Rows);
+            info.AddValue("width_stride", ColumnStride);
+            info.AddValue("height_stride", RowStride);
         }
 
         public Matrix(SerializationInfo info, StreamingContext context)
         {
             Columns = info.GetInt32("width");
             Rows = info.GetInt32("height");
+            ColumnStride = info.GetInt32("width_stride");
+            RowStride = info.GetInt32("height_stride");
 
             var mData = (float[])info.GetValue("data", typeof(float[]));
 
@@ -472,7 +477,7 @@ namespace NNSharp
             memory = dev.AllocateMemory(Width * Height, MemoryFlags.ReadWrite, false);
             Write(mData);
 #elif CPU
-            memory = mData;
+            Memory = mData;
 #endif
         }
 
@@ -493,7 +498,7 @@ namespace NNSharp
 #if GPU
                 memory.Dispose();
 #elif CPU
-                memory = null;
+                Memory = null;
 #endif
 
                 disposedValue = true;

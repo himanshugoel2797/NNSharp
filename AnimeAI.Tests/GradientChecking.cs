@@ -46,8 +46,7 @@ namespace AnimeAI.Tests
             front.InitializeWeights(new ConstantWeightInitializer());
 
             var lossFunc = new Quadratic();
-            var optimizer = new SGD();
-            optimizer.SetLearningRate(0.7f);
+            var optimizer = new SGD(0.7f);
 
             Matrix x0 = new Matrix(9, 1, MemoryFlags.ReadWrite, false);
             x0.Write(new float[] { 0, 0, 0, 0, 0, 0, 0, 0, 0 });

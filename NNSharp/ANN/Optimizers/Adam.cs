@@ -22,6 +22,7 @@ namespace NNSharp.ANN.Optimizers
         private readonly float learning_rate;
         private readonly float beta_1;
         private readonly float beta_2;
+        private readonly float epsilon;
         private Dictionary<ILayer, AdamParams> layers;
 
 #if GPU
@@ -63,12 +64,13 @@ namespace NNSharp.ANN.Optimizers
         }
 #endif
 
-        public Adam(float learning_rate = 0.001f, float beta_1 = 0.9f, float beta_2 = 0.999f)
+        public Adam(float learning_rate = 0.001f, float epsilon = 1e-6f, float beta_1 = 0.9f, float beta_2 = 0.999f)
         {
             this.layers = new Dictionary<ILayer, AdamParams>();
             this.learning_rate = learning_rate;
             this.beta_1 = beta_1;
             this.beta_2 = beta_2;
+            this.epsilon = epsilon;
         }
 
         public void OptimizeWeights(ILayer layer, int idx, Matrix w, Matrix nabla_w)
@@ -79,12 +81,12 @@ namespace NNSharp.ANN.Optimizers
             //v_w = beta_2 * v_w + (1 - beta_2) * nabla_w^2
             //w = w - (learning_rate / (sqrt(v_w / (1 - beta_2)) + eps)) * (m_w / (1 - beta_1))
 #if CPU
-            Parallel.For(0, @params.m_w[idx].memory.Length, (i) =>
+            Parallel.For(0, @params.m_w[idx].Memory.Length, (i) =>
             {
-                @params.m_w[idx].memory[i] = beta_1 * @params.m_w[idx].memory[i] + (1 - beta_1) * nabla_w.memory[i];
-                @params.v_w[idx].memory[i] = beta_2 * @params.v_w[idx].memory[i] + (1 - beta_2) * nabla_w.memory[i] * nabla_w.memory[i];
+                @params.m_w[idx].Memory[i] = beta_1 * @params.m_w[idx].Memory[i] + (1 - beta_1) * nabla_w.Memory[i];
+                @params.v_w[idx].Memory[i] = beta_2 * @params.v_w[idx].Memory[i] + (1 - beta_2) * nabla_w.Memory[i] * nabla_w.Memory[i];
 
-                w.memory[i] -= (float)(learning_rate / (Math.Sqrt(@params.v_w[idx].memory[i] / (1 - beta_2)) + double.Epsilon)) * (@params.m_w[idx].memory[i] / (1 - beta_1));
+                w.Memory[i] -= (float)(learning_rate / (Math.Sqrt(@params.v_w[idx].Memory[i] / (1 - beta_2)) + epsilon)) * (@params.m_w[idx].Memory[i] / (1 - beta_1));
             });
 #elif GPU
             Optimize(@params.m_w[idx].memory, @params.v_w[idx].memory, nabla_w.memory, w.memory, w.Width * w.Height);
@@ -99,12 +101,12 @@ namespace NNSharp.ANN.Optimizers
             //v_b = beta_2 * v_b + (1 - beta_2) * nabla_b^2
             //b = b - (learning_rate / (sqrt(v_b / (1 - beta_2)) + eps)) * (m_b / (1 - beta_1))
 #if CPU
-            Parallel.For(0, @params.m_b[idx].memory.Length, (i) =>
+            Parallel.For(0, @params.m_b[idx].Memory.Length, (i) =>
             {
-                @params.m_b[idx].memory[i] = beta_1 * @params.m_b[idx].memory[i] + (1 - beta_1) * nabla_b.memory[i];
-                @params.v_b[idx].memory[i] = beta_2 * @params.v_b[idx].memory[i] + (1 - beta_2) * nabla_b.memory[i] * nabla_b.memory[i];
+                @params.m_b[idx].Memory[i] = beta_1 * @params.m_b[idx].Memory[i] + (1 - beta_1) * nabla_b.Memory[i];
+                @params.v_b[idx].Memory[i] = beta_2 * @params.v_b[idx].Memory[i] + (1 - beta_2) * nabla_b.Memory[i] * nabla_b.Memory[i];
 
-                b.memory[i] -= (float)(learning_rate / (Math.Sqrt(@params.v_b[idx].memory[i] / (1 - beta_2)) + double.Epsilon)) * (@params.m_b[idx].memory[i] / (1 - beta_1));
+                b.Memory[i] -= (float)(learning_rate / (Math.Sqrt(@params.v_b[idx].Memory[i] / (1 - beta_2)) + epsilon)) * (@params.m_b[idx].Memory[i] / (1 - beta_1));
             });
 #elif GPU
             Optimize(@params.m_b[idx].memory, @params.v_b[idx].memory, nabla_b.memory, b.memory, b.Length);

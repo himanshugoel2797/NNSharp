@@ -18,6 +18,7 @@ namespace NNSharp.ANN.Layers
         private readonly int paddingSz = 0 /*P*/;
         private readonly int filterCnt = 0 /*K*/;
         private readonly int strideLen = 0 /*S*/;
+        private readonly int dilation = 0 /*D*/;
         public Matrix[][] Weights;
         public Matrix Bias;
 
@@ -41,12 +42,13 @@ namespace NNSharp.ANN.Layers
 
         const int SmallKernelRequirement = 400;
 
-        public ConvLayer(int filter_side, int filter_cnt, int padding = 0, int stride = 1)
+        public ConvLayer(int filter_side, int filter_cnt, int padding = 0, int stride = 1, int dilation = 1)
         {
             filterSz = filter_side;
             filterCnt = filter_cnt;
             paddingSz = padding;
             strideLen = stride;
+            this.dilation = dilation;
             WeightErrorsReset = false;
         }
 
@@ -63,8 +65,8 @@ namespace NNSharp.ANN.Layers
 
                 for (int i = 0; i < filterCnt; i++)
                 {
-                    int padd = ((inputSz - 1) * strideLen - outputSz + filterSz) / 2;
-                    Matrix.Convolve(prev_delta[0], false, i * outputSz * outputSz, outputSz, padd, strideLen, Weights[i][j], true, 0, filterSz, BackwardDelta, false, j * inputSz * inputSz, inputSz, false);
+                    int padd = ((inputSz - 1) * strideLen - outputSz + filterSz * dilation) / 2;
+                    Matrix.Convolve(prev_delta[0], false, i * outputSz * outputSz, outputSz, padd, dilation, strideLen, Weights[i][j], true, 0, filterSz, BackwardDelta, false, j * inputSz * inputSz, inputSz, false);
                 }
             });
 
@@ -82,17 +84,17 @@ namespace NNSharp.ANN.Layers
             {
                 float acc = 0;
                 for (int x = 0; x < outputSz * outputSz; x++)
-                    acc += prev_delta[0].memory[prev_delta[0].Index(i * outputSz * outputSz + x, 0)];
+                    acc += prev_delta[0].Memory[prev_delta[0].Index(i * outputSz * outputSz + x, 0)];
 
                 if (WeightErrorsReset)
-                    BiasError.memory[BiasError.Index(i, 0)] = 0;
+                    BiasError.Memory[BiasError.Index(i, 0)] = 0;
 
-                BiasError.memory[BiasError.Index(i, 0)] += acc;
+                BiasError.Memory[BiasError.Index(i, 0)] += acc;
 
                 for (int j = 0; j < inputDepth; j++)
                 {
-                    int padd = ((filterSz - 1) * strideLen - inputSz + outputSz) / 2;
-                    Matrix.Convolve(PrevInput, false, j * inputSz * inputSz, inputSz, padd, strideLen, prev_delta[0], true, i * outputSz * outputSz, outputSz, WeightErrors[i][j], true, 0, filterSz, WeightErrorsReset);
+                    int padd = ((filterSz - 1) * strideLen - inputSz + outputSz * dilation) / 2;
+                    Matrix.Convolve(PrevInput, false, j * inputSz * inputSz, inputSz, padd, dilation, strideLen, prev_delta[0], true, i * outputSz * outputSz, outputSz, WeightErrors[i][j], true, 0, filterSz, WeightErrorsReset);
                 }
             });
             WeightErrorsReset = false;
@@ -108,7 +110,7 @@ namespace NNSharp.ANN.Layers
                 //Foreach Input Layers
                 for (int j = 0; j < inputDepth; j++)
                 {
-                    Matrix.Convolve(input[0], false, j * inputSz * inputSz, inputSz, paddingSz, strideLen, Weights[i][j], false, 0, filterSz, Output, false, i * outputSz * outputSz, outputSz, false, (j == 0 ? Bias : null), i);
+                    Matrix.Convolve(input[0], false, j * inputSz * inputSz, inputSz, paddingSz, dilation, strideLen, Weights[i][j], false, 0, filterSz, Output, false, i * outputSz * outputSz, outputSz, false, (j == 0 ? Bias : null), i);
                 }
             });
 
@@ -146,7 +148,8 @@ namespace NNSharp.ANN.Layers
         {
             inputDepth = input_depth;
             inputSz = input_side;
-            outputSz = (inputSz - filterSz + 2 * paddingSz) / strideLen + 1;
+            outputSz = (inputSz - filterSz * dilation + 2 * paddingSz) / strideLen + 1;
+            //o = (i - f * d + 2 * p) / s + 1
 
             //Allocate memory for the filters
             //Weights = new Matrix(filterSz * filterSz * filterCnt, inputDepth, MemoryFlags.ReadWrite, false);
@@ -199,9 +202,9 @@ namespace NNSharp.ANN.Layers
         #endregion
 
         #region Static Factory
-        public static LayerContainer Create(int filter_side, int filter_cnt, int padding = 0, int stride = 1)
+        public static LayerContainer Create(int filter_side, int filter_cnt, int padding = 0, int stride = 1, int dilation = 1)
         {
-            var layer = new ConvLayer(filter_side, filter_cnt, padding, stride);
+            var layer = new ConvLayer(filter_side, filter_cnt, padding, stride, dilation);
             return new LayerContainer(layer);
         }
         #endregion

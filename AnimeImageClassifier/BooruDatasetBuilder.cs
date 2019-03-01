@@ -1,5 +1,4 @@
 ﻿using NNSharp.ANN;
-using NNSharp.ANN.Datasets;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -17,9 +16,11 @@ namespace AnimeImageClassifier
         BooruSearch booruSearch;
 
         List<string> localTags, globalTags;
+        List<string> names;
 
         public BooruDatasetBuilder()
         {
+            names = new List<string>();
             booruSearch = new BooruSearch(BooruSearch.Gel);
             localTags = new List<string>();
             globalTags = new List<string>();
@@ -49,16 +50,17 @@ namespace AnimeImageClassifier
             XmlSerializer serializer = new XmlSerializer(typeof(string[]));
             for (int i = 0; i < localTags.Count; i++)
             {
+                names.Clear();
                 glbl_tags[globalTags.Count] = localTags[i];
 
                 localTags[i] = localTags[i].Replace(':', '_');
 
-                if (Directory.Exists(Path.Combine(path, "Images", localTags[i])))
+                if (Directory.Exists(Path.Combine(path, "Images", localTags[i].Replace('/', '_'))))
                     continue;
 
                 Console.WriteLine("Current Tag: " + localTags[i]);
-                Directory.CreateDirectory(Path.Combine(path, "Images", localTags[i]));
-                Directory.CreateDirectory(Path.Combine(path, "Tags", localTags[i]));
+                Directory.CreateDirectory(Path.Combine(path, "Images", localTags[i].Replace('/', '_')));
+                Directory.CreateDirectory(Path.Combine(path, "Tags", localTags[i].Replace('/', '_')));
 
                 for (int j = 0; j < per_tag_max;)
                 {
@@ -67,25 +69,30 @@ namespace AnimeImageClassifier
 
                     for (int q = 0; q < results.Length; q++)
                     {
-                        Console.WriteLine("Downloading Image #" + q);
+                        Console.WriteLine("Downloading Image #" + j);
 
-                        byte[] data = null;
-                        using (var wb = new WebClient())
-                            data = wb.DownloadData(results[q].URL);
+                        if (!names.Contains(results[q].URL))
+                        {
+                            names.Add(results[q].URL);
 
-                        using (MemoryStream strm = new MemoryStream(data))
-                        using (var bmp = new Bitmap(strm))
-                            bmp.Save(Path.Combine(path, $"Images", localTags[i], $"{j}.png"));
+                            byte[] data = null;
+                            using (var wb = new WebClient())
+                                data = wb.DownloadData(results[q].URL);
 
-                        using (var writer = File.OpenWrite(Path.Combine(path, $"Tags", localTags[i], $"{j}.xml")))
-                            serializer.Serialize(writer, results[q].Tags);
+                            using (MemoryStream strm = new MemoryStream(data))
+                            using (var bmp = new Bitmap(strm))
+                                bmp.Save(Path.Combine(path, $"Images", localTags[i].Replace('/', '_'), $"{j}.png"));
+
+                            using (var writer = File.OpenWrite(Path.Combine(path, $"Tags", localTags[i].Replace('/', '_'), $"{j}.xml")))
+                                serializer.Serialize(writer, results[q].Tags);
+                        }
 
                         j++;
                     }
                 }
             }
         }
-
+        /*
         public IDataset GetDataset(string srcPath, string smallPath, int res, int max_imgs_per_class)
         {
             LabeledFileImageSet imageSet = new LabeledFileImageSet(smallPath, res, max_imgs_per_class * localTags.Count, localTags.Count, 0);
@@ -105,6 +112,6 @@ namespace AnimeImageClassifier
 
             imageSet.Initialize();
             return imageSet;
-        }
+        }*/
     }
 }

@@ -95,6 +95,7 @@
     <Compile Include="ANN\Layers\FCLayer.cs" />
     <Compile Include="ANN\Layers\InputLayer.cs" />
     <Compile Include="ANN\Layers\PoolingLayer.cs" />
+    <Compile Include="ANN\Layers\UnpoolingLayer.cs" />
     <Compile Include="ANN\LossFunctions\BinaryCrossEntropy.cs" />
     <Compile Include="ANN\LossFunctions\LossFunctionBase.cs" />
     <Compile Include="ANN\LossFunctions\Quadratic.cs" />
