@@ -112,7 +112,7 @@ namespace AnimeAI.Tests
                 int idx = (r.Next() % (a_dataset.TrainingFiles.Count / 2));
 
                 var out_img = superres_enc_front.ForwardPropagate(a_dataset_vec[idx]);
-                quadratic.LossDeriv(out_img[0], b_dataset_vec[idx], loss_deriv);
+                quadratic.LossDeriv(out_img[0], b_dataset_vec[idx], loss_deriv, 0);
 
                 superres_dec_back.ResetLayerErrors();
                 superres_dec_back.ComputeGradients(loss_deriv);

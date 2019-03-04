@@ -9,7 +9,7 @@ namespace NNSharp.ANN.NetworkBuilder
     [Serializable]
     public class LayerContainer : LayerContainerBase
     {
-        internal ILayer CurrentLayer;
+        public ILayer CurrentLayer { get; private set; }
         private bool isWeightInitialized;
 
         public LayerContainer(ILayer layer) : base()

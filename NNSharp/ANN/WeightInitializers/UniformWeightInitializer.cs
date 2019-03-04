@@ -11,7 +11,7 @@ namespace NNSharp.ANN.WeightInitializers
     public class UniformWeightInitializer : IWeightInitializer
     {
         private NRandom rng;
-        private float b;
+        private readonly float b;
 
         public UniformWeightInitializer(int seed, float bias)
         {
@@ -21,12 +21,12 @@ namespace NNSharp.ANN.WeightInitializers
 
         public float GetBias()
         {
-            return (float)rng.NextGaussian(0, b);
+            return b;
         }
 
         public float GetWeight(int in_dim, int out_dim)
         {
-            return (float)rng.NextGaussian(0, Math.Sqrt(6.0f / (in_dim + out_dim)));
+            return (float)rng.NextGaussian(0, Math.Sqrt(2.0f / (in_dim + out_dim)));
         }
     }
 }

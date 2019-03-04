@@ -160,24 +160,56 @@ namespace NNSharp
 #error TODO
             //KernelManager.SGemv(a, b, false, c, KernelManager.SGemvOperation.Add, d);
 #elif CPU
-            Parallel.For(0, a.Rows, (i) =>
-            //for(int i = 0; i < a.Rows; i++)
+            /*if (a.Rows == 1 && a.Columns == 1 && b.Rows == 1 && b.Columns == 1)
             {
-                for (int j = 0; j < b.Columns; j++)
+                if (reset)
+                    o.Memory[0] = a.Memory[0] * b.Memory[0] + (c == null ? 0 : c.Memory[0]) + (d == null ? 0 : d.Memory[0]);
+                else
+                    o.Memory[0] += a.Memory[0] * b.Memory[0] + (c == null ? 0 : c.Memory[0]) + (d == null ? 0 : d.Memory[0]);
+            }
+            else if (a.Rows == 1)
+            {
+                Parallel.For(0, b.Columns, (j) =>
                 {
                     float acc = 0;
-                    for (int k = 0; k < a.Columns; k++)
+
+                    unsafe
                     {
-                        //TODO: Check if either one is continuously indexed, if so, use a version that uses and increments pointers directly
-                        acc += a.Memory[a.Index(i, k)] * b.Memory[b.Index(k, j)];
+                        fixed (float* a_p = a.Memory)
+                        {
+                            float* a_pi = a_p;
+                            for (int i = 0; i < b.Rows; i++)
+                                acc += b.Memory[b.Index(i, j)] * *(a_pi++);
+                        }
                     }
 
                     if (reset)
-                        o.Memory[o.Index(i, j)] = acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[d.Index(i, 0)]);
+                        o.Memory[j] = acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[0]);
                     else
-                        o.Memory[o.Index(i, j)] += acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[d.Index(i, 0)]);
-                }
-            });
+                        o.Memory[j] += acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[0]);
+                });
+            }
+            else*/
+            {
+                Parallel.For(0, a.Rows, (i) =>
+                //for(int i = 0; i < a.Rows; i++)
+                {
+                    for (int j = 0; j < b.Columns; j++)
+                    {
+                        float acc = 0;
+                        for (int k = 0; k < a.Columns; k++)
+                        {
+                            //TODO: Check if either one is continuously indexed, if so, use a version that uses and increments pointers directly
+                            acc += a.Memory[a.Index(i, k)] * b.Memory[b.Index(k, j)];
+                        }
+
+                        if (reset)
+                            o.Memory[o.Index(i, j)] = acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[d.Index(i, 0)]);
+                        else
+                            o.Memory[o.Index(i, j)] += acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[d.Index(i, 0)]);
+                    }
+                });
+            }
 #endif
         }
 
@@ -344,7 +376,7 @@ namespace NNSharp
             });*/
         }
 
-        public static void Convolve(Matrix input, bool rotInput, int inputOff, int inputSz, int paddingSz, int dilation, int strideLen, Matrix filter, bool rotFilter, int filterOff, int filterSz, Matrix output, bool rotOutput, int outputOff, int outputSz, bool zero, Matrix bias = null, int bias_off = 0)
+        public static void Convolve(Matrix input, bool rotInput, int inputOff, int inputSz, int paddingSz, int dilation, float strideLen, Matrix filter, bool rotFilter, int filterOff, int filterSz, Matrix output, bool rotOutput, int outputOff, int outputSz, bool zero, Matrix bias = null, int bias_off = 0)
         {
             if (zero)
                 output.Clear();
@@ -367,7 +399,7 @@ namespace NNSharp
 
                             for (int y = 0; y < outputSz; y++)
                             {
-                                int i_y = y * strideLen + y0 * dilation - paddingSz;
+                                int i_y = (int)(y * strideLen + y0 * dilation - paddingSz);
                                 if (rotInput) i_y = inputSz - 1 - i_y;
 
                                 if (bias != null)
@@ -383,7 +415,7 @@ namespace NNSharp
                                 if (i_y >= 0 && i_y < inputSz)
                                     for (int x = 0; x < outputSz; x++)
                                     {
-                                        int i_x = x * strideLen + x0 * dilation - paddingSz;
+                                        int i_x = (int)(x * strideLen + x0 * dilation - paddingSz);
                                         if (rotInput) i_x = inputSz - 1 - i_x;
 
                                         if (i_x >= 0 && i_x < inputSz)
@@ -411,13 +443,13 @@ namespace NNSharp
 
                             for (int y0 = 0; y0 < filterSz; y0++)
                             {
-                                int i_y = y * strideLen + y0 * dilation - paddingSz;
+                                int i_y = (int)(y * strideLen + y0 * dilation - paddingSz);
                                 if (rotInput) i_y = inputSz - 1 - i_y;
 
                                 if (i_y >= 0 && i_y < inputSz)
                                     for (int x0 = 0; x0 < filterSz; x0++)
                                     {
-                                        int i_x = x * strideLen + x0 * dilation - paddingSz;
+                                        int i_x = (int)(x * strideLen + x0 * dilation - paddingSz);
                                         if (rotInput) i_x = inputSz - 1 - i_x;
 
                                         float filter_val = filter_m[(filterSz - 1 - y0) * filterSz + (filterSz - 1 - x0)];

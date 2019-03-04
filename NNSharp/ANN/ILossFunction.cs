@@ -8,7 +8,7 @@ namespace NNSharp.ANN
 {
     public interface ILossFunction
     {
-        void Loss(Matrix output, Matrix expectedOutput, Matrix result);
-        void LossDeriv(Matrix output, Matrix expectedOutput, Matrix result);
+        void Loss(Matrix output, Matrix expectedOutput, Matrix result, float regularizationParam);
+        void LossDeriv(Matrix output, Matrix expectedOutput, Matrix result, float regularizationParam);
     }
 }

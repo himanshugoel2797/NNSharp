@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace NNSharp.Tools
 {
+    [Serializable]
     public class NRandom
     {
         private Random rng;

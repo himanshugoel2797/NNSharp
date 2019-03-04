@@ -21,7 +21,7 @@ namespace NNSharp.Test
         static void Main(string[] args)
         {
             ANN.Kernels.KernelManager.Initialize();
-
+            new MNIST.DGAN().Train();
             Console.ReadLine();
         }
     }

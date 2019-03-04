@@ -11,9 +11,9 @@ namespace AnimeAI.Tests
         static void Main(string[] args)
         {
             NNSharp.ANN.Kernels.KernelManager.Initialize();
-            var superResolution = new GAN();//new ReversibleAutoencoder(); //new ConvSuperResolution();
-            superResolution.Train();
-            //new GradientChecking().Check();
+            //var superResolution = new GAN();//new ReversibleAutoencoder(); //new ConvSuperResolution();
+            //superResolution.Train();
+            new GradientChecking().Check();
         }
     }
 }

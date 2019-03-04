@@ -25,6 +25,10 @@ namespace NNSharp.ANN.Optimizers
         private readonly float epsilon;
         private Dictionary<ILayer, AdamParams> layers;
 
+        public float L1Val { get; private set; }
+        public float L2Val { get; private set; }
+        public int Net { get; private set; }
+
 #if GPU
         private static Dictionary<int, Kernel> adam_kernels;
 
@@ -71,6 +75,7 @@ namespace NNSharp.ANN.Optimizers
             this.beta_1 = beta_1;
             this.beta_2 = beta_2;
             this.epsilon = epsilon;
+            Net = 1;
         }
 
         public void OptimizeWeights(ILayer layer, int idx, Matrix w, Matrix nabla_w)
@@ -85,6 +90,10 @@ namespace NNSharp.ANN.Optimizers
             {
                 @params.m_w[idx].Memory[i] = beta_1 * @params.m_w[idx].Memory[i] + (1 - beta_1) * nabla_w.Memory[i];
                 @params.v_w[idx].Memory[i] = beta_2 * @params.v_w[idx].Memory[i] + (1 - beta_2) * nabla_w.Memory[i] * nabla_w.Memory[i];
+
+                L1Val += Math.Abs(w.Memory[i]);
+                L2Val += w.Memory[i] * w.Memory[i];
+                Net++;
 
                 w.Memory[i] -= (float)(learning_rate / (Math.Sqrt(@params.v_w[idx].Memory[i] / (1 - beta_2)) + epsilon)) * (@params.m_w[idx].Memory[i] / (1 - beta_1));
             });
@@ -141,7 +150,9 @@ namespace NNSharp.ANN.Optimizers
 
         public void Update(float curError)
         {
-
+            L1Val = 0;
+            L2Val = 0;
+            Net = 0;
         }
     }
 }

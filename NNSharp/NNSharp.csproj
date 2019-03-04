@@ -92,12 +92,14 @@
     <Compile Include="ANN\Kernels\KernelManager.cs" />
     <Compile Include="ANN\Layers\ActivationLayer.cs" />
     <Compile Include="ANN\Layers\ConvLayer.cs" />
+    <Compile Include="ANN\Layers\DropoutLayer.cs" />
     <Compile Include="ANN\Layers\FCLayer.cs" />
     <Compile Include="ANN\Layers\InputLayer.cs" />
     <Compile Include="ANN\Layers\PoolingLayer.cs" />
     <Compile Include="ANN\Layers\UnpoolingLayer.cs" />
     <Compile Include="ANN\LossFunctions\BinaryCrossEntropy.cs" />
     <Compile Include="ANN\LossFunctions\LossFunctionBase.cs" />
+    <Compile Include="ANN\LossFunctions\NamedLossFunction.cs" />
     <Compile Include="ANN\LossFunctions\Quadratic.cs" />
     <Compile Include="ANN\NetworkBuilder\LayerContainer.cs" />
     <Compile Include="ANN\NetworkBuilder\LayerContainerBase.cs" />

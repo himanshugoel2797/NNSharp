@@ -41,7 +41,7 @@ namespace NNSharp.ANN.Layers
             this.output_dpth = output_dpth;
             this.layerReset = false;
         }
-         
+
         public void Learn(IOptimizer optimizer)
         {
             optimizer.RegisterLayer(this, 1, input_sz * input_sz * input_dpth, k * k * output_dpth, 1, k * k * output_dpth);
@@ -53,7 +53,6 @@ namespace NNSharp.ANN.Layers
         {
             //Clear the biases and deltas
             layerReset = true;
-            BiasDelta.Clear();
         }
 
         public Matrix[] Forward(Matrix[] input)
@@ -79,7 +78,7 @@ namespace NNSharp.ANN.Layers
         {
             //Compute the current weights using prev_delta as the error
             Matrix.Mad(PrevInput, prev_delta[0].Transpose(), null, null, WeightDelta, layerReset);
-            Matrix.Fmop(prev_delta[0], 1, BiasDelta, 1, BiasDelta);
+            Matrix.Fmop(prev_delta[0], 1, BiasDelta, layerReset ? 0 : 1, BiasDelta);
 
             layerReset = false;
         }
@@ -116,16 +115,17 @@ namespace NNSharp.ANN.Layers
             float[] m_ws = new float[Weights.Rows];
             float[] b_ws = new float[Biases.Rows];
 
-            for (int j = 0; j < Weights.Columns * Weights.Rows; j++){
-                    Weights.Memory[j] = (float)weightInitializer.GetWeight(Weights.Columns, Weights.Rows); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
+            for (int j = 0; j < Weights.Columns * Weights.Rows; j++)
+            {
+                Weights.Memory[j] = (float)weightInitializer.GetWeight(Weights.Columns, Weights.Rows); //(i + j * Weights.Height + 1) / (Weights.Width * Weights.Height + 1); //
             }
             //);
 
             for (int i = 0; i < b_ws.Length; i++)
             //Parallel.For(0, b_ws.Length, (i) =>
             {
-               b_ws[i] = weightInitializer.GetBias();
-           }//);
+                b_ws[i] = weightInitializer.GetBias();
+            }//);
 
             Biases.Write(b_ws);
         }
