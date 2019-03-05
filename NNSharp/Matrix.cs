@@ -20,11 +20,10 @@ namespace NNSharp
         public int RowStride { get; private set; }
         public int ColumnStride { get; private set; }
 
-#if GPU
-        internal Memory memory;
-#elif CPU
         public float[] Memory;
-#endif
+        internal Memory GPUMemory;
+        private bool GPU_uptodate;
+        private bool CPU_uptodate;
 
         public Matrix(int rows, int cols, MemoryFlags flags, bool zero)
         {
@@ -33,19 +32,17 @@ namespace NNSharp
 
             RowStride = cols;
             ColumnStride = 1;
-#if GPU
-            memory = Device.GetDevice().AllocateMemory(cols * rows, flags, zero);
-#elif CPU
             Memory = new float[cols * rows];
-#endif
+
+            GPU_uptodate = false;
+            CPU_uptodate = true;
         }
-#if GPU
-        private Matrix(Memory memory, int rows, int cols, int row_stride, int col_stride)
-#elif CPU
-        private Matrix(float[] memory, int rows, int cols, int row_stride, int col_stride)
-#endif
+
+        private Matrix(float[] memory, Memory gpu_mem, bool gpu_u2d, bool cpu_u2d, int rows, int cols, int row_stride, int col_stride)
         {
-            this.Memory = memory;
+            Memory = memory;
+            GPUMemory = gpu_mem;
+
             Columns = cols;
             Rows = rows;
 
@@ -54,7 +51,30 @@ namespace NNSharp
 
             RowStride = cols;
             ColumnStride = 1;
+
+            GPU_uptodate = gpu_u2d;
+            CPU_uptodate = cpu_u2d;
         }
+
+        #region GPU Management
+        private void UpdateGPU()
+        {
+            var dev = Device.GetDevice();
+            if (GPUMemory == null) GPUMemory = dev.AllocateMemory(Memory.Length, MemoryFlags.ReadWrite, false);
+            dev.Write(GPUMemory, Memory);
+            GPU_uptodate = true;
+        }
+
+        private void UpdateCPU()
+        {
+            if (GPUMemory != null)
+            {
+                var dev = Device.GetDevice();
+                dev.Read(GPUMemory, Memory);
+            }
+            CPU_uptodate = true;
+        }
+        #endregion
 
         #region Bounds
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -78,56 +98,34 @@ namespace NNSharp
             //Strides: (3,1)   = (1,3)              = (6,1)
             //[[1, 2, 3],[4, 5, 6]].T = [[1, 4],[2, 5],[3, 6]].R = [[1, 4, 2, 5, 3, 6]]
             //[[1, 2, 3],[4, 5, 6]].R = [[1, 2, 3, 4, 5, 6]].T = [[1],[2],[3],[4],[5],[6]]
-            return new Matrix(Memory, rows, cols, cols, rows);
+            return new Matrix(Memory, GPUMemory, GPU_uptodate, CPU_uptodate, rows, cols, cols, rows);
         }
 
         public Matrix Transpose()
         {
-            return new Matrix(Memory, Columns, Rows, ColumnStride, RowStride);
+            return new Matrix(Memory, GPUMemory, GPU_uptodate, CPU_uptodate, Columns, Rows, ColumnStride, RowStride);
         }
         #endregion
 
         #region Read/Write
         public void Write(float[] data)
         {
-#if GPU
-            var dev = Device.GetDevice();
-            dev.Write(memory, data);
-#elif CPU
             Array.Copy(data, Memory, Memory.Length);
-#endif
         }
 
         public void Write(float[] data, int offset)
         {
-#if GPU
-            var dev = Device.GetDevice();
-            dev.Write(memory, data, offset);
-#elif CPU
             Array.Copy(data, 0, Memory, offset, data.Length);
-#endif
         }
 
         public void Read(float[] data)
         {
-#if GPU
-            var dev = Device.GetDevice();
-            dev.Read(memory, data);
-#elif CPU
             Array.Copy(Memory, data, data.Length);
-#endif
         }
 
         public float[] Read()
         {
-#if GPU
-            var data = new float[Width * Height];
-            var dev = Device.GetDevice();
-            dev.Read(memory, data);
-            return data;
-#elif CPU
             return Memory;
-#endif
         }
         #endregion
 
@@ -156,11 +154,16 @@ namespace NNSharp
             if (d != null && d.Rows != a.Rows)
                 throw new ArgumentException();
 
-#if GPU
-#error TODO
-            //KernelManager.SGemv(a, b, false, c, KernelManager.SGemvOperation.Add, d);
-#elif CPU
-            /*if (a.Rows == 1 && a.Columns == 1 && b.Rows == 1 && b.Columns == 1)
+            if (!a.CPU_uptodate)
+                a.UpdateCPU();
+            if (!b.CPU_uptodate)
+                b.UpdateCPU();
+            if (c != null && !c.CPU_uptodate)
+                c.UpdateCPU();
+            if (d != null && !d.CPU_uptodate)
+                d.UpdateCPU();
+
+            if (a.Rows == 1 && a.Columns == 1 && b.Rows == 1 && b.Columns == 1)
             {
                 if (reset)
                     o.Memory[0] = a.Memory[0] * b.Memory[0] + (c == null ? 0 : c.Memory[0]) + (d == null ? 0 : d.Memory[0]);
@@ -189,7 +192,7 @@ namespace NNSharp
                         o.Memory[j] += acc + (c == null ? 0 : c.Memory[c.Index(j, 0)]) + (d == null ? 0 : d.Memory[0]);
                 });
             }
-            else*/
+            else
             {
                 Parallel.For(0, a.Rows, (i) =>
                 //for(int i = 0; i < a.Rows; i++)
@@ -210,7 +213,9 @@ namespace NNSharp
                     }
                 });
             }
-#endif
+
+            o.GPU_uptodate = false;
+            o.CPU_uptodate = true;
         }
 
         /// <summary>
@@ -233,9 +238,12 @@ namespace NNSharp
             if (b != null && b.Rows != c.Rows)
                 throw new ArgumentException();
 
-#if GPU
-#error TODO
-#elif CPU
+
+            if (b != null && !b.CPU_uptodate)
+                b.UpdateCPU();
+            if (a != null && !a.CPU_uptodate)
+                a.UpdateCPU();
+
             if (c.ColumnStride == 1 && ((a != null && a.ColumnStride == 1) | a == null) && ((b != null && b.ColumnStride == 1) | b == null))
             {
                 unsafe
@@ -261,7 +269,9 @@ namespace NNSharp
                         c.Memory[c.Index(i, j)] = (a == null ? 0 : a.Memory[a.Index(i, j)]) * rate_a + (b == null ? 0 : b.Memory[b.Index(i, j)]) * rate_b;
                     }
                 });
-#endif
+
+            c.GPU_uptodate = false;
+            c.CPU_uptodate = true;
         }
 
         /// <summary>
@@ -285,101 +295,41 @@ namespace NNSharp
             if (b != null && b.Rows != c.Rows)
                 throw new ArgumentException();
 
-#if GPU
-            KernelManager.HadamardActiv(a, b, c, activ);
-#elif CPU
+            if (b != null && !b.CPU_uptodate)
+                b.UpdateCPU();
+            if (!a.CPU_uptodate)
+                a.UpdateCPU();
+
             Parallel.For(0, c.Memory.Length, (i) =>
             {
                 c.Memory[i] = (b == null ? 1 : b.Memory[i]) * activ.CPUFunction(a.Memory[i]);
             });
-#endif
-        }
 
-        /// <summary>
-        /// Extract blocks of filter_sz from the input and convert them into columns
-        /// </summary>
-        /// <param name="input_sz"></param>
-        /// <param name="input_cnt"></param>
-        /// <param name="stride_len"></param>
-        /// <param name="padding"></param>
-        /// <param name="filter_sz"></param>
-        /// <param name="output_sz"></param>
-        /// <param name="input"></param>
-        /// <param name="output"></param>
-        public static void Image2Column(int input_sz, int input_cnt, int stride_len, int padding, int filter_sz, int output_sz, Matrix input, Matrix output)
-        {
-            int block_sz = filter_sz * filter_sz * input_cnt;   //output rows
-            int len = output_sz * output_sz;                    //output columns
-
-            //for (int i_col = 0; i_col < len; i_col++)
-            Parallel.For(0, len, (i_col) =>
-            {
-                for (int i_d = 0; i_d < input_cnt; i_d++)
-                    for (int f_row = 0; f_row < filter_sz; f_row++)
-                        for (int f_col = 0; f_col < filter_sz; f_col++)
-                        {
-                            int f_row0 = (i_col / output_sz) * stride_len + f_row - padding;
-                            int f_col0 = (i_col % output_sz) * stride_len + f_col - padding;
-
-                            output.Memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)] = 0;
-
-                            if (f_row0 >= 0 && f_col0 >= 0 && f_row0 < input_sz && f_col0 < input_sz)
-                                output.Memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)] = input.Memory[input.Index(i_d, f_row0 * input_sz + f_col0)];
-                        }
-            });
-        }
-
-        public static void Column2Image(int input_sz, int input_cnt, int stride_len, int padding, int filter_sz, int output_sz, Matrix input, Matrix output, Matrix inc_cnt = null)
-        {
-            //Foreach column in input, rearrange it into a block, stripping padding and applying appropriate strides
-            int block_sz = filter_sz * filter_sz * input_cnt;
-            int len = output_sz * output_sz;
-
-            if (inc_cnt == null) inc_cnt = new Matrix(input.Rows, input.Columns, MemoryFlags.ReadWrite, true);
-
-            input.Clear();
-            /*
-            for (int i_col = 0; i_col < len; i_col++)
-                for (int i_d = 0; i_d < input_cnt; i_d++)
-                    for (int f_row = 0; f_row < filter_sz; f_row++)
-                        for (int f_col = 0; f_col < filter_sz; f_col++)
-                        {
-                            int f_row0 = (i_col / output_sz) * stride_len + f_row - padding;
-                            int f_col0 = (i_col % output_sz) * stride_len + f_col - padding;
-
-                            if (f_row0 >= 0 && f_col0 >= 0 && f_row0 < input_sz && f_col0 < input_sz)
-                                input.memory[input.Index(i_d, f_row0 * input_sz + f_col0)] += output.memory[output.Index(i_d * filter_sz * filter_sz + f_row * filter_sz + f_col, i_col)];
-                        }*/
-            //for (int c = 0; c < block_sz; c++)
-            Parallel.For(0, block_sz, (c) =>
-            {
-                int col_off = (c % filter_sz);
-                int row_off = (c / filter_sz) % filter_sz;
-                int c_im = c / filter_sz / filter_sz;
-                for (int row = 0; row < output_sz; row++)
-                    for (int col = 0; col < output_sz; col++)
-                    {
-                        int row_pad = row * stride_len - padding + row_off;
-                        int col_pad = col * stride_len - padding + col_off;
-                        if (row_pad >= 0 && row_pad < input_sz && col_pad >= 0 && col_pad < input_sz)
-                        {
-                            input.Memory[input.Index(c_im, row_pad * input_sz + col_pad)] += output.Memory[c * output_sz * output_sz + row * output_sz + col];
-                            inc_cnt.Memory[input.Index(c_im, row_pad * input_sz + col_pad)]++;
-                        }
-                    }
-            });
-
-            //for (int i = 0; i < input_sz * input_sz; i++)
-            /*Parallel.For(0, input_sz * input_sz, (i) =>
-            {
-                input.memory[i] /= inc_cnt.memory[i];
-            });*/
+            c.GPU_uptodate = false;
+            c.CPU_uptodate = true;
         }
 
         public static void Convolve(Matrix input, bool rotInput, int inputOff, int inputSz, int paddingSz, int dilation, float strideLen, Matrix filter, bool rotFilter, int filterOff, int filterSz, Matrix output, bool rotOutput, int outputOff, int outputSz, bool zero, Matrix bias = null, int bias_off = 0)
         {
-            if (zero)
-                output.Clear();
+            if (KernelManager.GPUMode)
+            {
+                if (!input.GPU_uptodate)
+                    input.UpdateGPU();
+                if (!filter.GPU_uptodate)
+                    filter.UpdateGPU();
+                if (!output.GPU_uptodate)
+                    output.UpdateGPU();
+
+                KernelManager.Convolve(input, inputOff, inputSz, filter, filterOff, filterSz, rotFilter, paddingSz, strideLen, output, outputOff, outputSz, rotOutput, zero, bias, bias_off);
+
+                output.CPU_uptodate = false;
+                output.GPU_uptodate = true;
+
+                return;
+            }
+
+                if (zero)
+                    output.Clear();
 
             unsafe
             {
@@ -467,27 +417,23 @@ namespace NNSharp
             }
         }
 
+
         /// <summary>
         /// Clear the matrix.
         /// </summary>
         public void Clear()
         {
-#if GPU
-#error TODO
-#elif CPU
             Array.Clear(Memory, 0, Memory.Length);
-#endif
+            if (GPUMemory == null) UpdateGPU();
+            //Device.GetDevice().Fill(GPUMemory, 0, Memory.Length, 0);
+            CPU_uptodate = true;
+            GPU_uptodate = true;
         }
         #endregion
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-#if GPU
-            var mData = new float[Width * Height];
-            Read(mData);
-#elif CPU
             var mData = Memory;
-#endif
             info.AddValue("data", mData, mData.GetType());
             info.AddValue("width", Columns);
             info.AddValue("height", Rows);
@@ -503,14 +449,7 @@ namespace NNSharp
             RowStride = info.GetInt32("height_stride");
 
             var mData = (float[])info.GetValue("data", typeof(float[]));
-
-#if GPU
-            var dev = Device.GetDevice();
-            memory = dev.AllocateMemory(Width * Height, MemoryFlags.ReadWrite, false);
-            Write(mData);
-#elif CPU
             Memory = mData;
-#endif
         }
 
         #region IDisposable Support
@@ -527,12 +466,7 @@ namespace NNSharp
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
                 // TODO: set large fields to null.
-#if GPU
-                memory.Dispose();
-#elif CPU
                 Memory = null;
-#endif
-
                 disposedValue = true;
             }
         }

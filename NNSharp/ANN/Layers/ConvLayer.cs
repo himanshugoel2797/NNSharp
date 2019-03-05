@@ -69,15 +69,15 @@ namespace NNSharp.ANN.Layers
         public Matrix[] Propagate(Matrix[] prev_delta)
         {
             BackwardDelta.Clear();
-            Parallel.For(0, inputDepth, (j) =>
+            //Parallel.For(0, inputDepth, (j) =>
+            for (int j = 0; j < inputDepth; j++)
             {
-
                 for (int i = 0; i < filterCnt; i++)
                 {
                     int padd = (int)(((inputSz - 1) * strideLen - outputSz + filterSz * dilation) / 2);
                     Matrix.Convolve(prev_delta[0], false, i * outputSz * outputSz, outputSz, padd, dilation, strideLen, Weights[i][j], true, 0, filterSz, BackwardDelta, false, j * inputSz * inputSz, inputSz, false);
                 }
-            });
+            }//);
 
             return new Matrix[] { BackwardDelta };
         }
@@ -89,7 +89,8 @@ namespace NNSharp.ANN.Layers
 
         public void LayerError(Matrix[] prev_delta)
         {
-            Parallel.For(0, filterCnt, (i) =>
+            //Parallel.For(0, filterCnt, (i) =>
+            for (int i = 0; i < filterCnt; i++)
             {
                 float acc = 0;
                 for (int x = 0; x < outputSz * outputSz; x++)
@@ -105,7 +106,7 @@ namespace NNSharp.ANN.Layers
                     int padd = (int)(((filterSz - 1) * strideLen - inputSz + outputSz * dilation) / 2);
                     Matrix.Convolve(PrevInput, false, j * inputSz * inputSz, inputSz, padd, dilation, strideLen, prev_delta[0], true, i * outputSz * outputSz, outputSz, WeightErrors[i][j], true, 0, filterSz, WeightErrorsReset);
                 }
-            });
+            }//);
             WeightErrorsReset = false;
         }
 
@@ -114,14 +115,15 @@ namespace NNSharp.ANN.Layers
             PrevInput = input[0];
 
             Output.Clear();
-            Parallel.For(0, filterCnt, (i) =>
+            //Parallel.For(0, filterCnt, (i) =>
+            for(int i = 0; i < filterCnt; i++)
             {
                 //Foreach Input Layers
                 for (int j = 0; j < inputDepth; j++)
                 {
                     Matrix.Convolve(input[0], false, j * inputSz * inputSz, inputSz, paddingSz, dilation, strideLen, Weights[i][j], false, 0, filterSz, Output, false, i * outputSz * outputSz, outputSz, false, (j == 0 ? Bias : null), i);
                 }
-            });
+            }//);
 
             return new Matrix[] { Output };
         }
@@ -131,13 +133,14 @@ namespace NNSharp.ANN.Layers
             optimizer.RegisterLayer(this, filterCnt * inputDepth, filterSz, filterSz, 1, filterCnt);
 
             //for (int i = 0; i < filterCnt; i++)
-            Parallel.For(0, filterCnt, (i) =>
+            //Parallel.For(0, filterCnt, (i) =>
+            for (int i = 0; i < filterCnt; i++)
             {
                 for (int j = 0; j < inputDepth; j++)
                 {
                     optimizer.OptimizeWeights(this, i * inputDepth + j, Weights[i][j], WeightErrors[i][j]);
                 }
-            });
+            }//);
 
             optimizer.OptimizeBiases(this, 0, Bias, BiasError);
         }
@@ -163,7 +166,7 @@ namespace NNSharp.ANN.Layers
             //Weights = new Matrix(filterSz * filterSz * filterCnt, inputDepth, MemoryFlags.ReadWrite, false);
             //Each filter is filterSz x filterSz x inputDepth
             //The output for each point of the filter is the sum of the convolution of each individual filter
-            Weights = new Matrix[filterCnt][];
+            Weights = new Matrix[filterCnt][];//26 - 22 = (2p)
             WeightErrors = new Matrix[filterCnt][];
 
             for (int i = 0; i < filterCnt; i++)

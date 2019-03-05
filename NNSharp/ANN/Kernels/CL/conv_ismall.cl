@@ -7,13 +7,16 @@
 //ROT_KERN
 //ROT_OUT
 //ZERO_O
+//ADD_BIAS
 
 __kernel void conv_ismall(const int IN_OFF,
-                          const int KERN_OFF,
-                          const int OUT_OFF,
-                          const __global float* i,
-                          const __global float* kern,
-                          __global float* o) {
+                   const int KERN_OFF,
+                   const int OUT_OFF,
+                   const int BIAS_OFF,
+                   const __global float* i,
+                   const __global float* kern,
+                   __global float* o,
+                    const __global float* bias) {
 
     const int globalRow = get_global_id(0); //row
     const int globalCol = get_global_id(1); //col
@@ -43,6 +46,9 @@ __kernel void conv_ismall(const int IN_OFF,
                 acc += kern[KERN_OFF + n0 * KERN_D + n1] * i_l[i_x * IN_D + i_y];
 #endif
         }
+#ifdef ADD_BIAS
+    acc += bias[BIAS_OFF];
+#endif
 
 #ifdef ZERO_O
 #ifdef ROT_OUT

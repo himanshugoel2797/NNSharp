@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NNSharp.ANN.Kernels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,10 +11,11 @@ namespace AnimeAI.Tests
     {
         static void Main(string[] args)
         {
-            NNSharp.ANN.Kernels.KernelManager.Initialize();
+            KernelManager.Initialize();
+            KernelManager.GPUMode = true;
             //var superResolution = new GAN();//new ReversibleAutoencoder(); //new ConvSuperResolution();
-            //superResolution.Train();
-            new GradientChecking().Check();
+            new ConvSuperResolution().Train();
+            //new GradientChecking().Check();
         }
     }
 }

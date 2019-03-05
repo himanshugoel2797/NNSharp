@@ -3,7 +3,6 @@ using System;
 
 namespace NNSharp
 {
-#if GPU
     public class Memory : IDisposable
     {
         internal IMem buf;
@@ -45,5 +44,4 @@ namespace NNSharp
         }
 #endregion
     }
-#endif
 }

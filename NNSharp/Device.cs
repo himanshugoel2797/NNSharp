@@ -19,7 +19,6 @@ namespace NNSharp
 
     public class Device
     {
-#if GPU
         internal OpenCL.Net.Environment env;
         private Action lastEventHandler;
 
@@ -149,7 +148,7 @@ namespace NNSharp
             HandleEvent();
             Cl.EnqueueNDRangeKernel(env.CommandQueues[0], k.kern, 2, null, new IntPtr[] { (IntPtr)global_sz[0], (IntPtr)global_sz[1] }, local_sz == null ? null : new IntPtr[] { (IntPtr)local_sz[0], (IntPtr)local_sz[1] }, 0, null, out var eve);
 
-            k.pendingExecution = eve;
+            k.PendingExecution = eve;
             lastEventHandler = () =>
             {
                 Cl.WaitForEvents((uint)1, new Event[] { eve });
@@ -164,6 +163,5 @@ namespace NNSharp
             perfLogWriter.Flush();
 #endif
         }
-#endif
     }
 }

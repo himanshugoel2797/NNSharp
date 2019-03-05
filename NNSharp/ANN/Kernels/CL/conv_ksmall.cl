@@ -6,13 +6,16 @@
 
 //ROT_KERN
 //ZERO_O
+//ADD_BIAS
 
 __kernel void conv_ksmall(const int IN_OFF,
-                          const int KERN_OFF,
-                          const int OUT_OFF,
-                          const __global float* i,
-                          __constant float* kern,
-                          __global float* o) {
+                   const int KERN_OFF,
+                   const int OUT_OFF,
+                   const int BIAS_OFF,
+                   const __global float* i,
+                   const __global float* kern,
+                   __global float* o,
+                    const __global float* bias) {
 
     const int globalRow = get_global_id(0); //row
     const int globalCol = get_global_id(1); //col
@@ -42,6 +45,9 @@ __kernel void conv_ksmall(const int IN_OFF,
                 acc += kern_l[n0 * KERN_D + n1] * i[IN_OFF + i_x * IN_D + i_y];
 #endif
         }
+#ifdef ADD_BIAS
+    acc += bias[BIAS_OFF];
+#endif
 
 #ifdef ZERO_O
 #ifdef ROT_OUT

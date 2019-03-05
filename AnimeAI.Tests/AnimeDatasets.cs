@@ -160,7 +160,7 @@ namespace AnimeAI.Tests
             {
                 Random rng = new Random(0);
                 TrainingFiles.AddRange(Directory.EnumerateFiles(TrainingDataPath_SMALL));
-                while (TrainingFiles.Count > 5000)
+                while (TrainingFiles.Count > 50)
                 {
                     TrainingFiles.RemoveAt(TrainingFiles.Count - 1);
                 }

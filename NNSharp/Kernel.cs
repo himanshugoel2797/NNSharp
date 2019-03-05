@@ -8,16 +8,15 @@ using OpenCL.Net.Extensions;
 
 namespace NNSharp
 {
-#if GPU
     public class Kernel
     {
         public string Name { get; set; }
 
-#if DELAY_COMPILE && GPU
+#if DELAY_COMPILE
         public string SourceCode { get; set; }
         public bool Initialized { get; set; }
-        internal Event pendingExecution { get; set; }
 #endif
+        internal Event PendingExecution { get; set; }
         internal OpenCL.Net.Kernel kern;
         private CLExtensions.KernelArgChain chain;
         private bool reset = true;
@@ -29,19 +28,17 @@ namespace NNSharp
 
         public Kernel SetArgument<T>(T val) where T : struct, IComparable
         {
-#if GPU
-#if DELAY_COMPILE
+#if DELAY_COMPILE 
             if (!Initialized)
             {
                 Initialized = true;
                 kern = Device.GetDevice().env.Context.CompileKernelFromSource(SourceCode, Name, "-cl-unsafe-math-optimizations");
             }
 #endif
-            if (pendingExecution.IsValid())
+            if (PendingExecution.IsValid())
             {
                 Device.GetDevice().HandleEvent();
             }
-#endif
 
             if (reset)
             {
@@ -55,7 +52,6 @@ namespace NNSharp
 
         public Kernel SetArgumentMemory(Memory val)
         {
-#if GPU
 #if DELAY_COMPILE
             if (!Initialized)
             {
@@ -63,11 +59,12 @@ namespace NNSharp
                 kern = Device.GetDevice().env.Context.CompileKernelFromSource(SourceCode, Name, "-cl-unsafe-math-optimizations");
             }
 #endif
-            if (pendingExecution.IsValid())
+            if (PendingExecution.IsValid())
             {
                 Device.GetDevice().HandleEvent();
             }
-#endif
+            if (val == null) return this;
+
             if (reset)
             {
                 chain = kern.SetKernelArg((IMem)val.buf);
@@ -78,5 +75,4 @@ namespace NNSharp
             return this;
         }
     }
-#endif
 }
